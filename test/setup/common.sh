@@ -113,7 +113,7 @@ function initManaged() {
       sed -e "s;<cluster_name>;${managed};" "$joinCommand" | bash
     fi
     sleep 2
-    kubectl scale deployment klusterlet -n open-cluster-management --replicas=0
+    kubectl scale deployment klusterlet -n open-cluster-management --replicas=1
   fi
     
   SECOND=0
