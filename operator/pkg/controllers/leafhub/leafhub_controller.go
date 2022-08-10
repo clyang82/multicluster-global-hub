@@ -76,7 +76,8 @@ var leafhubs = hubClusters{clusters: make(map[string]bool)}
 // LeafHubReconciler reconciles a LeafHub Cluster
 type LeafHubReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme    *runtime.Scheme
+	APIReader client.Reader
 }
 
 //+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclusters,verbs=get;list;watch
@@ -163,7 +164,8 @@ func (r *LeafHubReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 // reconcileLeafHub reconciles a single leafhub
 func (r *LeafHubReconciler) reconcileLeafHub(ctx context.Context, req ctrl.Request,
-	mgh *operatorv1alpha1.MultiClusterGlobalHub, toDelete bool, log logr.Logger) error {
+	mgh *operatorv1alpha1.MultiClusterGlobalHub, toDelete bool, log logr.Logger,
+) error {
 	if toDelete {
 		// do nothing when in prune mode, the multiclusterglobalhub reconcile request will clean up resources for all leafhubs
 		return nil
@@ -257,7 +259,7 @@ func (r *LeafHubReconciler) reconcileLeafHub(ctx context.Context, req ctrl.Reque
 		return deleteManagedClusterAddon(ctx, r.Client, log, managedClusterName, mgh.GetName())
 	}
 
-	pm, err := getPackageManifestConfig(ctx, r.Client, log)
+	pm, err := getPackageManifestConfig(ctx, r.APIReader, log)
 	if err != nil {
 		return err
 	}
@@ -271,7 +273,7 @@ func (r *LeafHubReconciler) reconcileLeafHub(ctx context.Context, req ctrl.Reque
 		}
 	} else { // for hypershift hosted leaf hub
 		if pm.MCEDefaultChannel == "" || pm.MCECurrentCSV == "" {
-			return fmt.Errorf("PackageManifest for ACM is not ready")
+			return fmt.Errorf("PackageManifest for MCE is not ready")
 		}
 
 		if err := r.reconcileHostedLeafHub(ctx, log, managedClusterName, mgh, pm, hcConfig); err != nil {
@@ -285,7 +287,8 @@ func (r *LeafHubReconciler) reconcileLeafHub(ctx context.Context, req ctrl.Reque
 
 // reconcileNonHostedLeafHub reconciles the normal leafhub, which is not running hosted mode
 func (r *LeafHubReconciler) reconcileNonHostedLeafHub(ctx context.Context, log logr.Logger, managedClusterName string,
-	mgh *operatorv1alpha1.MultiClusterGlobalHub, pm *packageManifestConfig) error {
+	mgh *operatorv1alpha1.MultiClusterGlobalHub, pm *packageManifestConfig,
+) error {
 	hubSubWork, err := applyHubSubWork(ctx, r.Client, log, mgh.GetName(), managedClusterName, pm)
 	if err != nil {
 		return err
@@ -346,7 +349,8 @@ func (r *LeafHubReconciler) reconcileNonHostedLeafHub(ctx context.Context, log l
 
 // reconcileHostedLeafHub reconciles the multiclusterglobalhub change
 func (r *LeafHubReconciler) reconcileHostedLeafHub(ctx context.Context, log logr.Logger, managedClusterName string,
-	mgh *operatorv1alpha1.MultiClusterGlobalHub, pm *packageManifestConfig, hcConfig *config.HostedClusterConfig) error {
+	mgh *operatorv1alpha1.MultiClusterGlobalHub, pm *packageManifestConfig, hcConfig *config.HostedClusterConfig,
+) error {
 	// check the manifestwork for hosted hub before apply it, be careful about the order
 	// don't call applyHubHypershiftWorks wil different channelClusterIP in one reconcile loop
 	hubMgtWork := &workv1.ManifestWork{}
@@ -380,7 +384,8 @@ func (r *LeafHubReconciler) reconcileHostedLeafHub(ctx context.Context, log logr
 
 // MultiClusterGlobalHub reconciles the multiclusterglobalhub change
 func (r *LeafHubReconciler) MultiClusterGlobalHub(ctx context.Context, req ctrl.Request,
-	mgh *operatorv1alpha1.MultiClusterGlobalHub, toPruneAll bool, log logr.Logger) error {
+	mgh *operatorv1alpha1.MultiClusterGlobalHub, toPruneAll bool, log logr.Logger,
+) error {
 	// handle multiclusterglobalhub deleting
 	if toPruneAll {
 		log.Info("multiclusterglobalhub is terminating, delete manifests for leafhubs...")
@@ -547,7 +552,8 @@ func (r *LeafHubReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // and field in manifestwork status
 // return true if the expected value is found
 func findStatusFeedbackValueFromWork(work *workv1.ManifestWork, kind, feedbackField, feedbackValue string,
-	log logr.Logger) (bool, string) {
+	log logr.Logger,
+) (bool, string) {
 	log.Info("checking status feedback value from manifestwork", "manifestwork namespace", work.GetNamespace(),
 		"manifestwork name", work.GetName(), "resource kind", kind, "feedback field", feedbackField)
 	for _, manifestCondition := range work.Status.ResourceStatus.Manifests {

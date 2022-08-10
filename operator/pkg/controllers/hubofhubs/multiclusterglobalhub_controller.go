@@ -64,7 +64,8 @@ var isLeafHubControllerRunnning = false
 type MultiClusterGlobalHubReconciler struct {
 	manager.Manager
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme    *runtime.Scheme
+	APIReader client.Reader
 }
 
 // SetConditionFunc is function type that receives the concrete condition method
@@ -240,8 +241,9 @@ func (r *MultiClusterGlobalHubReconciler) Reconcile(ctx context.Context, req ctr
 	// try to start leafhub controller if it is not running
 	if !isLeafHubControllerRunnning {
 		if err := (&leafhubscontroller.LeafHubReconciler{
-			Client: r.Client,
-			Scheme: r.Scheme,
+			Client:    r.Client,
+			Scheme:    r.Scheme,
+			APIReader: r.APIReader,
 		}).SetupWithManager(r.Manager); err != nil {
 			log.Error(err, "unable to create controller", "controller", "LeafHub")
 			return ctrl.Result{}, err
@@ -267,7 +269,8 @@ func (r *MultiClusterGlobalHubReconciler) Reconcile(ctx context.Context, req ctr
 }
 
 func (r *MultiClusterGlobalHubReconciler) manipulateObj(ctx context.Context, objs []*unstructured.Unstructured,
-	mgh *operatorv1alpha1.MultiClusterGlobalHub, setConditionFunc SetConditionFunc, log logr.Logger) error {
+	mgh *operatorv1alpha1.MultiClusterGlobalHub, setConditionFunc SetConditionFunc, log logr.Logger,
+) error {
 	hohDeployer := deployer.NewHoHDeployer(r.Client)
 	// manipulate the object
 	for _, obj := range objs {

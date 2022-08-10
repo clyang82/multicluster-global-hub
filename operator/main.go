@@ -88,9 +88,10 @@ func main() {
 	}
 
 	if err = (&hubofhubscontrollers.MultiClusterGlobalHubReconciler{
-		Manager: mgr,
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
+		Manager:   mgr,
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		APIReader: mgr.GetAPIReader(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterGlobalHub")
 		os.Exit(1)
