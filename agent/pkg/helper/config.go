@@ -39,6 +39,7 @@ func NewConfigManager() (*ConfigManager, error) {
 		ElectionConfig: &commonobjects.LeaderElectionConfig{},
 	}
 
+	pflag.StringVar(&configManager.FromKubeconfig, "from-kubeconfig", configManager.FromKubeconfig, "Kubeconfig for accessing the global cluster.")
 	pflag.StringVar(&configManager.LeafHubName, "leaf-hub-name", "", "The name of the leaf hub.")
 	pflag.StringVar(&configManager.BootstrapServers, "kafka-bootstrap-server", "",
 		"The bootstrap server for kafka.")

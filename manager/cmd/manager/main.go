@@ -16,11 +16,18 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/spf13/pflag"
+	apiruntime "k8s.io/apimachinery/pkg/runtime"
+	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/client-go/dynamic"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/tools/clientcmd"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
+	placementrulev1 "open-cluster-management.io/multicloud-operators-subscription/pkg/apis/apps/placementrule/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	"github.com/stolostron/multicluster-global-hub/manager/pkg/apiserver"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/nonk8sapi"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/scheme"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/specsyncer/db2transport/db/postgresql"
@@ -58,6 +65,7 @@ var (
 )
 
 type hohManagerConfig struct {
+	apiOnly               bool
 	managerNamespace      string
 	watchNamespace        string
 	syncerConfig          *syncerConfig
@@ -67,6 +75,7 @@ type hohManagerConfig struct {
 	statisticsConfig      *statistics.StatisticsConfig
 	nonK8sAPIServerConfig *nonk8sapi.NonK8sAPIServerConfig
 	electionConfig        *commonobjects.LeaderElectionConfig
+	apiServerOptions      *apiserver.Options
 }
 
 type syncerConfig struct {
@@ -99,8 +108,11 @@ func parseFlags() (*hohManagerConfig, error) {
 		statisticsConfig:      &statistics.StatisticsConfig{},
 		nonK8sAPIServerConfig: &nonk8sapi.NonK8sAPIServerConfig{},
 		electionConfig:        &commonobjects.LeaderElectionConfig{},
+		apiServerOptions:      apiserver.NewOptions(),
 	}
 
+	pflag.BoolVar(&managerConfig.apiOnly, "api-only", false,
+		"The manager is running as api server only.")
 	pflag.StringVar(&managerConfig.managerNamespace, "manager-namespace", "open-cluster-management",
 		"The manager running namespace, also used as leader election namespace.")
 	pflag.StringVar(&managerConfig.watchNamespace, "watch-namespace", "",
@@ -145,22 +157,27 @@ func parseFlags() (*hohManagerConfig, error) {
 	pflag.IntVar(&managerConfig.electionConfig.LeaseDuration, "lease-duration", 137, "controller leader lease duration")
 	pflag.IntVar(&managerConfig.electionConfig.RenewDeadline, "renew-deadline", 107, "controller leader renew deadline")
 	pflag.IntVar(&managerConfig.electionConfig.RetryPeriod, "retry-period", 26, "controller leader retry period")
+
+	managerConfig.apiServerOptions.AddFlags(pflag.CommandLine)
 	// add flags for logger
 	pflag.CommandLine.AddFlagSet(zap.FlagSet())
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+
 	pflag.Parse()
 
-	if managerConfig.databaseConfig.processDatabaseURL == "" {
-		return nil, fmt.Errorf("database url for process user: %w", errFlagParameterEmpty)
-	}
+	if !managerConfig.apiOnly {
+		if managerConfig.databaseConfig.processDatabaseURL == "" {
+			return nil, fmt.Errorf("database url for process user: %w", errFlagParameterEmpty)
+		}
 
-	if managerConfig.databaseConfig.transportBridgeDatabaseURL == "" {
-		return nil, fmt.Errorf("database url for transport-bridge user: %w", errFlagParameterEmpty)
-	}
+		if managerConfig.databaseConfig.transportBridgeDatabaseURL == "" {
+			return nil, fmt.Errorf("database url for transport-bridge user: %w", errFlagParameterEmpty)
+		}
 
-	if managerConfig.kafkaConfig.producerConfig.MsgSizeLimitKB > producer.MaxMessageSizeLimit {
-		return nil, fmt.Errorf("%w - size must not exceed %d : %s", errFlagParameterIllegalValue,
-			producer.MaxMessageSizeLimit, "kafka-message-size-limit")
+		if managerConfig.kafkaConfig.producerConfig.MsgSizeLimitKB > producer.MaxMessageSizeLimit {
+			return nil, fmt.Errorf("%w - size must not exceed %d : %s", errFlagParameterIllegalValue,
+				producer.MaxMessageSizeLimit, "kafka-message-size-limit")
+		}
 	}
 
 	return managerConfig, nil
@@ -328,6 +345,54 @@ func doMain() int {
 	if err != nil {
 		log.Error(err, "flags parse error")
 		return 1
+	}
+
+	if managerConfig.apiOnly {
+
+		clusterCfg, err := clientcmd.BuildConfigFromFlags("", "")
+		if err != nil {
+			log.Error(err, "BuildConfigFromFlags")
+			return 1
+		}
+
+		dynamicClient, err := dynamic.NewForConfig(clusterCfg)
+		if err != nil {
+			log.Error(err, "dynamic.NewForConfig")
+			return 1
+		}
+
+		err = placementrulev1.AddToScheme(apiruntime.NewScheme())
+		if err != nil {
+			return 1
+		}
+		err = clusterv1beta1.AddToScheme(apiruntime.NewScheme())
+		if err != nil {
+			return 1
+		}
+
+		ctx := genericapiserver.SetupSignalContext()
+		webhookServer := &webhook.Server{
+			Port:    webhookPort,
+			CertDir: webhookCertDir,
+		}
+		log.Info("registering webhooks to the webhook server")
+		webhookServer.Register("/mutating", &webhook.Admission{
+			Handler: &mgrwebhook.AdmissionHandler{},
+		})
+		go func() {
+			// StartStandalone runs a webhook server without a controller manager
+			if err = webhookServer.StartStandalone(ctx, apiruntime.NewScheme()); err != nil {
+				log.Error(err, "cannot start the webhook server")
+			}
+		}()
+
+		s := apiserver.NewGlobalHubApiServer(managerConfig.apiServerOptions, dynamicClient, clusterCfg)
+
+		if err := s.RunGlobalHubApiServer(ctx); err != nil {
+			log.Error(err, "manager exited non-zero")
+			return 1
+		}
+		return 0
 	}
 
 	// create statistics

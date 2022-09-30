@@ -52,6 +52,8 @@ const (
 	INCARNATION_CONFIG_MAP_KEY = "incarnation"
 	BASE10                     = 10
 	UINT64_SIZE                = 64
+
+	numThreads = 2
 )
 
 func main() {
@@ -95,14 +97,11 @@ func doMain(ctx context.Context, restConfig *rest.Config) int {
 		log.Error(err, "transport producer initialization error")
 	}
 
-	consumer.Start()
-	producer.Start()
-	defer consumer.Stop()
-	defer producer.Stop()
-
-	mgr, err := createManager(consumer, producer, configManager)
+	// syncer initialization
+	hohConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: configManager.FromKubeconfig}, nil).ClientConfig()
 	if err != nil {
-		log.Error(err, "failed to create manager")
+		log.Error(err, "failed to create global hub client config")
 		return 1
 	}
 
@@ -112,6 +111,17 @@ func doMain(ctx context.Context, restConfig *rest.Config) int {
 		return 1
 	}
 
+	if err := syncer.StartSyncer(
+		ctrl.SetupSignalHandler(),
+		&syncer.SyncerConfig{
+			UpstreamConfig:   hohConfig,
+			DownstreamConfig: toConfig,
+		},
+		numThreads,
+	); err != nil {
+		log.Error(err, "failed to start syncer")
+		return 1
+	}
 	return 0
 }
 
