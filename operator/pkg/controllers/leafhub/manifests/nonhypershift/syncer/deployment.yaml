@@ -1,0 +1,40 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: multicluster-global-hub-syncer
+  labels:
+    app: multicluster-global-hub-syncer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: multicluster-global-hub-syncer
+  template:
+    metadata:
+      labels:
+        app: multicluster-global-hub-syncer
+    spec:
+      serviceAccountName: multicluster-global-hub-syncer-sa
+      containers:
+      - args:
+        - "/syncer"
+        - "--from-kubeconfig=/multicluster-global-hub-config/kubeconfig"
+        env:
+        name: multicluster-global-hub-syncer
+        image: quay.io/clyang82/multicluster-global-hub-agent:latest
+        imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /multicluster-global-hub-config
+          name: multicluster-global-hub-kubeconfig
+      volumes:
+      - name: multicluster-global-hub-kubeconfig
+        secret:
+          defaultMode: 420
+          secretName: multicluster-global-hub-kubeconfig

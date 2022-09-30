@@ -1,0 +1,15 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: multicluster-global-hub-apiserver
+  namespace: {{.Namespace}}
+  annotations:
+    "service.beta.openshift.io/serving-cert-secret-name": multicluster-global-hub-apiserver
+spec:
+  selector:
+    app: multicluster-global-hub-apiserver
+  ports:
+    - name: secure
+      protocol: TCP
+      port: 443
+      targetPort: 6443

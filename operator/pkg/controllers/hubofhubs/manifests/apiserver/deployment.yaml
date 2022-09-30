@@ -1,0 +1,43 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: multicluster-global-hub-apiserver
+  namespace: {{.Namespace}}
+  labels:
+    app: multicluster-global-hub-apiserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: multicluster-global-hub-apiserver
+  template:
+    metadata:
+      labels:
+        app: multicluster-global-hub-apiserver
+    spec:
+      serviceAccountName: multicluster-global-hub-apiserver-sa
+      containers:
+      - args:
+        - "/apiserver"
+        - "--secure-port=6443"
+        - "--tls-cert-file=/var/run/apiservice/tls.crt"
+        - "--tls-private-key-file=/var/run/apiservice/tls.key"
+        env:
+        name: multicluster-global-hub-apiserver
+        image: quay.io/stolostron/multicluster-global-hub-manager:latest
+        imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsNonRoot: true
+        volumeMounts:
+        - mountPath: /var/run/apiservice
+          name: apiservice-certs
+      volumes:
+      - name: apiservice-certs
+        secret:
+          defaultMode: 420
+          secretName: multicluster-global-hub-apiserver

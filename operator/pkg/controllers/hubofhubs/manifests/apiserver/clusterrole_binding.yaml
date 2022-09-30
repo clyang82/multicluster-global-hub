@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: open-cluster-management:multicluster-global-hub-apiserver
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: open-cluster-management:multicluster-global-hub-apiserver
+subjects:
+  - kind: ServiceAccount
+    name: multicluster-global-hub-apiserver-sa
+    namespace: open-cluster-management

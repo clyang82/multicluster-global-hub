@@ -16,11 +16,15 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/spf13/pflag"
+	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/client-go/dynamic"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	"github.com/stolostron/multicluster-global-hub/manager/pkg/apiserver"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/nonk8sapi"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/scheme"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/specsyncer/db2transport/db/postgresql"
@@ -61,6 +65,7 @@ var (
 )
 
 type hohManagerConfig struct {
+	apiOnly               bool
 	managerNamespace      string
 	watchNamespace        string
 	syncerConfig          *syncerConfig
@@ -70,6 +75,7 @@ type hohManagerConfig struct {
 	syncServiceConfig     *statussyncservice.SyncServiceConfig
 	statisticsConfig      *statistics.StatisticsConfig
 	nonK8sAPIServerConfig *nonk8sapi.NonK8sAPIServerConfig
+	apiServerOptions      *apiserver.Options
 }
 
 type syncerConfig struct {
@@ -108,8 +114,11 @@ func parseFlags() (*hohManagerConfig, error) {
 		syncServiceConfig:     &statussyncservice.SyncServiceConfig{},
 		statisticsConfig:      &statistics.StatisticsConfig{},
 		nonK8sAPIServerConfig: &nonk8sapi.NonK8sAPIServerConfig{},
+		apiServerOptions:      apiserver.NewOptions(),
 	}
 
+	pflag.BoolVar(&managerConfig.apiOnly, "api-only", false,
+		"The manager is running as api server only.")
 	pflag.StringVar(&managerConfig.managerNamespace, "manager-namespace", "open-cluster-management",
 		"The manager running namespace, also used as leader election namespace.")
 	pflag.StringVar(&managerConfig.watchNamespace, "watch-namespace", "",
@@ -165,9 +174,11 @@ func parseFlags() (*hohManagerConfig, error) {
 	pflag.StringVar(&managerConfig.nonK8sAPIServerConfig.ServerBasePath, "server-base-path",
 		"/global-hub-api/v1", "The base path for nonK8s API server.")
 
+	managerConfig.apiServerOptions.AddFlags(pflag.CommandLine)
 	// add flags for logger
 	pflag.CommandLine.AddFlagSet(zap.FlagSet())
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+
 	pflag.Parse()
 
 	if managerConfig.databaseConfig.processDatabaseURL == "" {
@@ -366,6 +377,28 @@ func doMain() int {
 	if err != nil {
 		log.Error(err, "flags parse error")
 		return 1
+	}
+
+	if managerConfig.apiOnly {
+
+		clusterCfg, err := clientcmd.BuildConfigFromFlags("", "")
+		if err != nil {
+			log.Error(err, "BuildConfigFromFlags")
+			return 1
+		}
+
+		dynamicClient, err := dynamic.NewForConfig(clusterCfg)
+		if err != nil {
+			log.Error(err, "dynamic.NewForConfig")
+			return 1
+		}
+		s := apiserver.NewGlobalHubApiServer(managerConfig.apiServerOptions, dynamicClient, clusterCfg)
+
+		if err := s.RunGlobalHubApiServer(genericapiserver.SetupSignalContext()); err != nil {
+			log.Error(err, "manager exited non-zero")
+			return 1
+		}
+		return 0
 	}
 
 	// create statistics

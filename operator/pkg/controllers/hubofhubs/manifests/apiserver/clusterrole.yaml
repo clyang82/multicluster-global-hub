@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: open-cluster-management:multicluster-global-hub-apiserver
+rules:
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["create", "get", "list", "watch"]
+- apiGroups: ["policy.open-cluster-management.io"]
+  resources: ["policies", "placementbindings"]
+  verbs: ["create", "get", "list", "watch",]
+- apiGroups: ["apps.open-cluster-management.io"]
+  resources: ["placementrules"]
+  verbs: ["create", "get", "list", "watch",]
+- apiGroups: ["authorization.k8s.io"]
+  resources: ["subjectaccessreviews"]
+  verbs: ["get", "create"]
+- apiGroups: ["authentication.k8s.io"]
+  resources: ["tokenreviews"]
+  verbs: ["get", "create"]
