@@ -18,7 +18,7 @@ spec:
       serviceAccountName: multicluster-global-hub-apiserver-sa
       containers:
       - args:
-        - "/apiserver"
+        - "--api-only"
         - "--secure-port=6443"
         - "--tls-cert-file=/var/run/apiservice/tls.crt"
         - "--tls-private-key-file=/var/run/apiservice/tls.key"

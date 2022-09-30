@@ -201,7 +201,67 @@ func (r *MulticlusterGlobalHubReconciler) Reconcile(ctx context.Context, req ctr
 func (r *MulticlusterGlobalHubReconciler) reconcileNativeGlobalHub(ctx context.Context,
 	mgh *operatorv1alpha2.MulticlusterGlobalHub, log logr.Logger,
 ) error {
-	return fmt.Errorf("native data layer is not supported yet.")
+	// create new HoHRenderer and HoHDeployer
+	hohRenderer, hohDeployer := renderer.NewHoHRenderer(fs), deployer.NewHoHDeployer(r.Client)
+
+	// create discovery client
+	dc, err := discovery.NewDiscoveryClientForConfig(r.Manager.GetConfig())
+	if err != nil {
+		return err
+	}
+
+	// create restmapper for deployer to find GVR
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(dc))
+
+	// handle gc
+	isTerminating, err := r.recocileFinalizer(ctx, mgh, hohRenderer, hohDeployer, mapper, log)
+	if err != nil {
+		return err
+	}
+
+	if isTerminating {
+		log.Info("multiclusterglobalhub is terminating, skip the reconcile")
+		return nil
+	}
+
+	// check for image overrides configmap
+	var imageOverridesConfigmap *corev1.ConfigMap
+	if imageOverridesConfigmapName := config.GetImageOverridesConfigmap(mgh); imageOverridesConfigmapName != "" {
+		var err error
+		imageOverridesConfigmap, err = r.KubeClient.CoreV1().ConfigMaps(mgh.GetNamespace()).Get(
+			ctx, imageOverridesConfigmapName, metav1.GetOptions{})
+		if err != nil {
+			log.Error(err, "failed to get image overrides configmap",
+				"namespace", mgh.GetNamespace(),
+				"name", imageOverridesConfigmapName)
+			return err
+		}
+	}
+
+	// set image overrides
+	if err := config.SetImageOverrides(mgh, imageOverridesConfigmap); err != nil {
+		return err
+	}
+
+	managerObjects, err := hohRenderer.Render("manifests/apiserver", "", func(profile string) (interface{}, error) {
+		return struct {
+			Image     string
+			Namespace string
+		}{
+			Image:     config.GetImage("multicluster_global_hub_manager"),
+			Namespace: config.GetDefaultNamespace(),
+		}, nil
+	})
+	if err != nil {
+		return err
+	}
+	if err = r.manipulateObj(ctx, hohDeployer, mapper, managerObjects, mgh,
+		condition.SetConditionManagerDeployed, log); err != nil {
+		return err
+	}
+
+	return nil
+
 }
 
 func (r *MulticlusterGlobalHubReconciler) reconcileLargeScaleGlobalHub(ctx context.Context,
@@ -252,7 +312,7 @@ func (r *MulticlusterGlobalHubReconciler) reconcileLargeScaleGlobalHub(ctx conte
 		}
 	}
 
-	// set imgae overrides
+	// set image overrides
 	if err := config.SetImageOverrides(mgh, imageOverridesConfigmap); err != nil {
 		return err
 	}

@@ -70,8 +70,8 @@ var _ = Describe("MulticlusterGlobalHub controller", Ordered, func() {
 		interval = time.Millisecond * 250
 	)
 
-	Context("When create MGH Instance without native data layer type", func() {
-		It("Should not add finalizer to MGH instance and not deploy anything", func() {
+	Context("When create MGH Instance with native data layer type", func() {
+		It("Should add finalizer to MGH instance", func() {
 			ctx := context.Background()
 			By("By creating a new MGH instance with native data layer type")
 			mgh := &operatorv1alpha2.MulticlusterGlobalHub{
@@ -102,13 +102,31 @@ var _ = Describe("MulticlusterGlobalHub controller", Ordered, func() {
 			Expect(createdMGH.Spec.AggregationLevel).Should(Equal(operatorv1alpha2.Full))
 			Expect(createdMGH.Spec.EnableLocalPolicies).Should(Equal(true))
 
-			// check finalizer is not added to MGH instance
-			By("By checking finalizer is not added to MGH instance")
-			Expect(createdMGH.GetFinalizers()).Should(BeNil())
+			By("By checking the MGH CR manager deployed conditions are created as expected")
+			condition.SetConditionManagerDeployed(ctx, k8sClient, createdMGH, condition.CONDITION_STATUS_FALSE)
+			Expect(condition.GetConditionStatus(createdMGH,
+				condition.CONDITION_TYPE_MANAGER_DEPLOY)).Should(Equal(metav1.ConditionFalse))
+			Eventually(func() bool {
+				condition.SetConditionManagerDeployed(ctx, k8sClient, createdMGH, condition.CONDITION_STATUS_TRUE)
+				return condition.GetConditionStatus(createdMGH,
+					condition.CONDITION_TYPE_MANAGER_DEPLOY) == metav1.ConditionTrue
+			}, timeout, interval).Should(BeTrue())
+			Eventually(func() bool {
+				condition.SetConditionManagerDeployed(ctx, k8sClient, createdMGH, condition.CONDITION_STATUS_UNKNOWN)
+				return condition.GetConditionStatus(createdMGH,
+					condition.CONDITION_TYPE_MANAGER_DEPLOY) == metav1.ConditionUnknown
+			}, timeout, interval).Should(BeTrue())
 
-			// delete the testing MGH instance with native data layer type
-			By("By deleting the testing MGH instance with native data layer type")
+			// delete the testing MGH instance with invalid large scale data layer setting
+			By("By deleting the testing MGH instance with invalid large scale data layer setting")
 			Expect(k8sClient.Delete(ctx, mgh)).Should(Succeed())
+
+			// check MGH instance is deleted
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, mghLookupKey, createdMGH)
+				return errors.IsNotFound(err)
+			}, timeout, interval).Should(BeTrue())
+
 		})
 	})
 
