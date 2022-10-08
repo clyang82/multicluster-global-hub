@@ -5,5 +5,4 @@ import (
 )
 
 func TestEndpointListen(t *testing.T) {
-
 }

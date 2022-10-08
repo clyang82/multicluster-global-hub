@@ -181,17 +181,19 @@ func parseFlags() (*hohManagerConfig, error) {
 
 	pflag.Parse()
 
-	if managerConfig.databaseConfig.processDatabaseURL == "" {
-		return nil, fmt.Errorf("database url for process user: %w", errFlagParameterEmpty)
-	}
+	if !managerConfig.apiOnly {
+		if managerConfig.databaseConfig.processDatabaseURL == "" {
+			return nil, fmt.Errorf("database url for process user: %w", errFlagParameterEmpty)
+		}
 
-	if managerConfig.databaseConfig.transportBridgeDatabaseURL == "" {
-		return nil, fmt.Errorf("database url for transport-bridge user: %w", errFlagParameterEmpty)
-	}
+		if managerConfig.databaseConfig.transportBridgeDatabaseURL == "" {
+			return nil, fmt.Errorf("database url for transport-bridge user: %w", errFlagParameterEmpty)
+		}
 
-	if managerConfig.kafkaConfig.producerConfig.MsgSizeLimitKB > speckafka.MaxMessageSizeLimit {
-		return nil, fmt.Errorf("%w - size must not exceed %d : %s", errFlagParameterIllegalValue,
-			speckafka.MaxMessageSizeLimit, "kafka-message-size-limit")
+		if managerConfig.kafkaConfig.producerConfig.MsgSizeLimitKB > speckafka.MaxMessageSizeLimit {
+			return nil, fmt.Errorf("%w - size must not exceed %d : %s", errFlagParameterIllegalValue,
+				speckafka.MaxMessageSizeLimit, "kafka-message-size-limit")
+		}
 	}
 
 	return managerConfig, nil

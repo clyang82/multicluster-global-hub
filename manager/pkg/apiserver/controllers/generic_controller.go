@@ -45,8 +45,8 @@ type GenericController struct {
 }
 
 func NewGenericController(ctx context.Context, name string, client dynamic.Interface,
-	gvr schema.GroupVersionResource, informer cache.Informer, cache cache.Cache, createInstance func() client.Object) *GenericController {
-
+	gvr schema.GroupVersionResource, informer cache.Informer, cache cache.Cache, createInstance func() client.Object,
+) *GenericController {
 	queue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), name)
 	c := &GenericController{
 		context:        ctx,
@@ -126,7 +126,6 @@ func (c *GenericController) processNextWorkItem(ctx context.Context) bool {
 }
 
 func (c *GenericController) process(ctx context.Context, key string) error {
-
 	namespace, name, err := toolscache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		klog.Errorf("invalid key: %q: %v", key, err)
@@ -158,7 +157,7 @@ func (c *GenericController) Reconcile(ctx context.Context, obj interface{}) erro
 	}
 	unstructuredObj := &unstructured.Unstructured{Object: tempObj}
 
-	//clean up unneeded fields
+	// clean up unneeded fields
 	manipulateObj(unstructuredObj)
 
 	if unstructuredObj.GetNamespace() != "" {
@@ -222,5 +221,4 @@ func manipulateObj(unstructuredObj *unstructured.Unstructured) {
 	unstructuredObj.SetOwnerReferences(nil)
 
 	delete(unstructuredObj.GetAnnotations(), "kubectl.kubernetes.io/last-applied-configuration")
-
 }

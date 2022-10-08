@@ -95,7 +95,9 @@ func TestHandleVersionUpdate(t *testing.T) {
 		test := tests[i]
 		t.Run(test.name, func(t *testing.T) {
 			registration := &fakeAPIServiceRegistration{}
-			crdCache := cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+			crdCache := cache.NewIndexer(cache.DeletionHandlingMetaNamespaceKeyFunc, cache.Indexers{
+				cache.NamespaceIndex: cache.MetaNamespaceIndexFunc,
+			})
 			crdLister := crdlisters.NewCustomResourceDefinitionLister(crdCache)
 			c := crdRegistrationController{
 				crdLister:              crdLister,
@@ -129,6 +131,7 @@ type fakeAPIServiceRegistration struct {
 func (a *fakeAPIServiceRegistration) AddAPIServiceToSync(in *apiregistration.APIService) {
 	a.added = append(a.added, in)
 }
+
 func (a *fakeAPIServiceRegistration) RemoveAPIServiceToSync(name string) {
 	a.removed = append(a.removed, name)
 }

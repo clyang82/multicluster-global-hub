@@ -126,7 +126,6 @@ var _ = Describe("MulticlusterGlobalHub controller", Ordered, func() {
 				err := k8sClient.Get(ctx, mghLookupKey, createdMGH)
 				return errors.IsNotFound(err)
 			}, timeout, interval).Should(BeTrue())
-
 		})
 	})
 

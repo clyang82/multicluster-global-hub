@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/klog/v2"
-
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	crdinformers "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1"
 	crdlisters "k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1"
@@ -32,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog/v2"
 	v1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 )
 
@@ -61,13 +60,16 @@ type crdRegistrationController struct {
 
 // NewCRDRegistrationController returns a controller which will register CRD GroupVersions with the auto APIService registration
 // controller so they automatically stay in sync.
-func NewCRDRegistrationController(crdinformer crdinformers.CustomResourceDefinitionInformer, apiServiceRegistration AutoAPIServiceRegistration) *crdRegistrationController {
+func NewCRDRegistrationController(crdinformer crdinformers.CustomResourceDefinitionInformer,
+	apiServiceRegistration AutoAPIServiceRegistration,
+) *crdRegistrationController {
 	c := &crdRegistrationController{
 		crdLister:              crdinformer.Lister(),
 		crdSynced:              crdinformer.Informer().HasSynced,
 		apiServiceRegistration: apiServiceRegistration,
 		syncedInitialSet:       make(chan struct{}),
-		queue:                  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "crd_autoregistration_controller"),
+		queue: workqueue.NewNamedRateLimitingQueue(
+			workqueue.DefaultControllerRateLimiter(), "crd_autoregistration_controller"),
 	}
 	c.syncHandler = c.handleVersionUpdate
 

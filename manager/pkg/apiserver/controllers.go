@@ -26,7 +26,6 @@ const (
 )
 
 func (s *GlobalHubApiServer) CreateCache(ctx context.Context) error {
-
 	scheme := runtime.NewScheme()
 
 	if err := apiextensionsv1.AddToScheme(scheme); err != nil {
@@ -79,7 +78,6 @@ func (s *GlobalHubApiServer) CreateCache(ctx context.Context) error {
 }
 
 func (s *GlobalHubApiServer) InstallCRDController(ctx context.Context, config *rest.Config) error {
-
 	controllerName := "hoh-crd-controller"
 	config = rest.AddUserAgent(rest.CopyConfig(config), controllerName)
 	dynamicClient, err := dynamic.NewForConfig(config)
@@ -87,7 +85,8 @@ func (s *GlobalHubApiServer) InstallCRDController(ctx context.Context, config *r
 		klog.Fatal(err)
 	}
 
-	informer, err := s.Cache.GetInformerForKind(ctx, apiextensionsv1.SchemeGroupVersion.WithKind("CustomResourceDefinition"))
+	informer, err := s.Cache.GetInformerForKind(ctx,
+		apiextensionsv1.SchemeGroupVersion.WithKind("CustomResourceDefinition"))
 	if err != nil {
 		return err
 	}
@@ -96,7 +95,9 @@ func (s *GlobalHubApiServer) InstallCRDController(ctx context.Context, config *r
 		apiextensionsv1.SchemeGroupVersion.WithResource("customresourcedefinitions"), informer, s.Cache,
 		func() client.Object { return &apiextensionsv1.CustomResourceDefinition{} })
 
-	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(hookContext genericapiserver.PostStartHookContext) error {
+	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(
+		hookContext genericapiserver.PostStartHookContext,
+	) error {
 		go c.Run(ctx, 1)
 		return nil
 	})
@@ -111,7 +112,8 @@ func (s *GlobalHubApiServer) InstallPolicyController(ctx context.Context, config
 		klog.Fatal(err)
 	}
 
-	informer, err := s.Cache.GetInformerForKind(ctx, policyv1.SchemeGroupVersion.WithKind("Policy"))
+	informer, err := s.Cache.GetInformerForKind(ctx,
+		policyv1.SchemeGroupVersion.WithKind("Policy"))
 	if err != nil {
 		return err
 	}
@@ -119,7 +121,9 @@ func (s *GlobalHubApiServer) InstallPolicyController(ctx context.Context, config
 		policyv1.SchemeGroupVersion.WithResource("policies"), informer, s.Cache,
 		func() client.Object { return &policyv1.Policy{} })
 
-	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(hookContext genericapiserver.PostStartHookContext) error {
+	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(
+		hookContext genericapiserver.PostStartHookContext,
+	) error {
 		go c.Run(ctx, 1)
 		return nil
 	})
@@ -134,7 +138,8 @@ func (s *GlobalHubApiServer) InstallPlacementRuleController(ctx context.Context,
 		klog.Fatal(err)
 	}
 
-	informer, err := s.Cache.GetInformerForKind(ctx, placementrulev1.SchemeGroupVersion.WithKind("PlacementRule"))
+	informer, err := s.Cache.GetInformerForKind(ctx,
+		placementrulev1.SchemeGroupVersion.WithKind("PlacementRule"))
 	if err != nil {
 		return err
 	}
@@ -142,7 +147,9 @@ func (s *GlobalHubApiServer) InstallPlacementRuleController(ctx context.Context,
 		placementrulev1.SchemeGroupVersion.WithResource("placementrules"), informer, s.Cache,
 		func() client.Object { return &placementrulev1.PlacementRule{} })
 
-	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(hookContext genericapiserver.PostStartHookContext) error {
+	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(
+		hookContext genericapiserver.PostStartHookContext,
+	) error {
 		go c.Run(ctx, 1)
 		return nil
 	})
@@ -157,7 +164,8 @@ func (s *GlobalHubApiServer) InstallPlacementBindingController(ctx context.Conte
 		klog.Fatal(err)
 	}
 
-	informer, err := s.Cache.GetInformerForKind(ctx, policyv1.SchemeGroupVersion.WithKind("PlacementBinding"))
+	informer, err := s.Cache.GetInformerForKind(ctx,
+		policyv1.SchemeGroupVersion.WithKind("PlacementBinding"))
 	if err != nil {
 		return err
 	}
@@ -165,7 +173,9 @@ func (s *GlobalHubApiServer) InstallPlacementBindingController(ctx context.Conte
 		policyv1.SchemeGroupVersion.WithResource("placementbindings"), informer, s.Cache,
 		func() client.Object { return &policyv1.PlacementBinding{} })
 
-	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(hookContext genericapiserver.PostStartHookContext) error {
+	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(
+		hookContext genericapiserver.PostStartHookContext,
+	) error {
 		go c.Run(ctx, 1)
 		return nil
 	})

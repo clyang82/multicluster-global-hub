@@ -24,7 +24,7 @@ spec:
         - "--tls-private-key-file=/var/run/apiservice/tls.key"
         env:
         name: multicluster-global-hub-apiserver
-        image: quay.io/stolostron/multicluster-global-hub-manager:latest
+        image: "{{.Image}}"
         imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false

@@ -86,10 +86,10 @@ type MulticlusterGlobalHubReconciler struct {
 //+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclustersets/join,verbs=create;delete
 //+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclustersets/bind,verbs=create;delete
 //+kubebuilder:rbac:groups=apps.open-cluster-management.io,resources=subscriptions,verbs=get;list;update;patch
-//+kubebuilder:rbac:groups=apps.open-cluster-management.io,resources=placementrules,verbs=get;list;update;patch
+//+kubebuilder:rbac:groups=apps.open-cluster-management.io,resources=placementrules,verbs=get;list;update;patch;create
 //+kubebuilder:rbac:groups=apps.open-cluster-management.io,resources=channels,verbs=get;list;update;patch
-//+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies,verbs=get;list;patch;update
-//+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=placementbindings,verbs=get;list;patch;update
+//+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies,verbs=get;list;patch;update;create
+//+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=placementbindings,verbs=get;list;patch;update;create
 //+kubebuilder:rbac:groups=app.k8s.io,resources=applications,verbs=get;list;patch;update
 //+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=placements,verbs=get;list;patch;update
 //+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclustersets,verbs=get;list;patch;update
@@ -106,6 +106,7 @@ type MulticlusterGlobalHubReconciler struct {
 //+kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterrolebindings,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=mutatingwebhookconfigurations,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups="route.openshift.io",resources=routes,verbs=get;list;watch;create;update;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -141,7 +142,7 @@ func (r *MulticlusterGlobalHubReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	if mgh.Spec.DataLayer == nil {
-		return ctrl.Result{}, fmt.Errorf("empty data layer type.")
+		return ctrl.Result{}, fmt.Errorf("empty data layer type")
 	}
 
 	switch mgh.Spec.DataLayer.Type {
@@ -197,6 +198,10 @@ func (r *MulticlusterGlobalHubReconciler) Reconcile(ctx context.Context, req ctr
 
 	return ctrl.Result{}, nil
 }
+
+//+kubebuilder:rbac:groups="apiextensions.k8s.io",resources=customresourcedefinitions,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups="authorization.k8s.io",resources=subjectaccessreviews,verbs=get;create
+//+kubebuilder:rbac:groups="authentication.k8s.io",resources=tokenreviews,verbs=get;create
 
 func (r *MulticlusterGlobalHubReconciler) reconcileNativeGlobalHub(ctx context.Context,
 	mgh *operatorv1alpha2.MulticlusterGlobalHub, log logr.Logger,
@@ -261,7 +266,6 @@ func (r *MulticlusterGlobalHubReconciler) reconcileNativeGlobalHub(ctx context.C
 	}
 
 	return nil
-
 }
 
 func (r *MulticlusterGlobalHubReconciler) reconcileLargeScaleGlobalHub(ctx context.Context,
@@ -272,7 +276,7 @@ func (r *MulticlusterGlobalHubReconciler) reconcileLargeScaleGlobalHub(ctx conte
 		mgh.Spec.DataLayer.LargeScale.Postgres.Name == "" ||
 		mgh.Spec.DataLayer.LargeScale.Kafka.Name == "" {
 		return fmt.Errorf("invalid settings for large scale data layer, " +
-			"storage and transport secrets are required.")
+			"storage and transport secrets are required")
 	}
 
 	// create new HoHRenderer and HoHDeployer

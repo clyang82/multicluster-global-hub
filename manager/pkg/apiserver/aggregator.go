@@ -58,7 +58,9 @@ var apiVersionPriorities = map[schema.GroupVersion]priority{
 	{Group: "admissionregistration.k8s.io", Version: "v1beta1"}: {group: 16700, version: 12},
 }
 
-func CreateAggregatorConfig(sharedConfig genericapiserver.Config, sharedEtcdOptions genericoptions.EtcdOptions) (*aggregatorapiserver.Config, error) {
+func CreateAggregatorConfig(sharedConfig genericapiserver.Config,
+	sharedEtcdOptions genericoptions.EtcdOptions,
+) (*aggregatorapiserver.Config, error) {
 	// make a shallow copy to let us twiddle a few things
 	// most of the config actually remains the same.  We only need to mess with a couple items related to the particulars of the aggregator
 	genericConfig := sharedConfig
@@ -74,7 +76,8 @@ func CreateAggregatorConfig(sharedConfig genericapiserver.Config, sharedEtcdOpti
 		return result
 	}
 
-	genericConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(getOpenAPIConfig, openapinamer.NewDefinitionNamer(apiextensionsapiserver.Scheme, aggregatorscheme.Scheme))
+	genericConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(getOpenAPIConfig,
+		openapinamer.NewDefinitionNamer(apiextensionsapiserver.Scheme, aggregatorscheme.Scheme))
 	genericConfig.OpenAPIConfig.Info.Title = "Hub of hubs API server"
 	genericConfig.OpenAPIConfig.Info.Version = "0.1.0"
 	genericConfig.LongRunningFunc = filters.BasicLongRunningRequestCheck(
@@ -84,13 +87,18 @@ func CreateAggregatorConfig(sharedConfig genericapiserver.Config, sharedEtcdOpti
 
 	// copy the etcd options so we don't mutate originals.
 	etcdOptions := sharedEtcdOptions
-	etcdOptions.StorageConfig.Codec = aggregatorscheme.Codecs.LegacyCodec(v1beta1.SchemeGroupVersion, v1.SchemeGroupVersion)
-	etcdOptions.StorageConfig.EncodeVersioner = runtime.NewMultiGroupVersioner(v1beta1.SchemeGroupVersion, schema.GroupKind{Group: v1beta1.GroupName})
+	etcdOptions.StorageConfig.Codec = aggregatorscheme.Codecs.LegacyCodec(
+		v1beta1.SchemeGroupVersion, v1.SchemeGroupVersion)
+	etcdOptions.StorageConfig.EncodeVersioner =
+		runtime.NewMultiGroupVersioner(v1beta1.SchemeGroupVersion, schema.GroupKind{
+			Group: v1beta1.GroupName,
+		})
 	genericConfig.RESTOptionsGetter = &genericoptions.SimpleRestOptionsFactory{Options: etcdOptions}
 
 	// override MergedResourceConfig with aggregator defaults and registry
 	// trying nil, since this is sourced from k8s.io/component-base/cli/flag.ConfigurationMap
-	mergedResourceConfig, err := resourceconfig.MergeAPIResourceConfigs(aggregatorapiserver.DefaultAPIResourceConfigSource(), nil, aggregatorscheme.Scheme)
+	mergedResourceConfig, err := resourceconfig.MergeAPIResourceConfigs(
+		aggregatorapiserver.DefaultAPIResourceConfigSource(), nil, aggregatorscheme.Scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +106,8 @@ func CreateAggregatorConfig(sharedConfig genericapiserver.Config, sharedEtcdOpti
 	genericConfig.MergedResourceConfig = mergedResourceConfig
 
 	versionedInformers := informers.NewSharedInformerFactory(fake.NewSimpleClientset(), 10*time.Minute)
-	serviceResolver := aggregatorapiserver.NewClusterIPServiceResolver(versionedInformers.Core().V1().Services().Lister())
+	serviceResolver := aggregatorapiserver.NewClusterIPServiceResolver(
+		versionedInformers.Core().V1().Services().Lister())
 
 	aggregatorConfig := &aggregatorapiserver.Config{
 		GenericConfig: &genericapiserver.RecommendedConfig{
@@ -116,32 +125,39 @@ func CreateAggregatorConfig(sharedConfig genericapiserver.Config, sharedEtcdOpti
 	return aggregatorConfig, nil
 }
 
-func CreateAggregatorServer(aggregatorConfig *aggregatorapiserver.Config, delegateAPIServer genericapiserver.DelegationTarget, apiExtensionInformers apiextensionsinformers.SharedInformerFactory) (*aggregatorapiserver.APIAggregator, error) {
+func CreateAggregatorServer(aggregatorConfig *aggregatorapiserver.Config,
+	delegateAPIServer genericapiserver.DelegationTarget, apiExtensionInformers apiextensionsinformers.SharedInformerFactory,
+) (*aggregatorapiserver.APIAggregator, error) {
 	aggregatorServer, err := aggregatorConfig.Complete().NewWithDelegate(delegateAPIServer)
 	if err != nil {
 		return nil, err
 	}
 
 	// create controllers for auto-registration
-	apiRegistrationClient, err := apiregistrationclient.NewForConfig(aggregatorConfig.GenericConfig.LoopbackClientConfig)
+	apiRegistrationClient, err := apiregistrationclient.NewForConfig(
+		aggregatorConfig.GenericConfig.LoopbackClientConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	autoRegistrationController := autoregister.NewAutoRegisterController(aggregatorServer.APIRegistrationInformers.Apiregistration().V1().APIServices(), apiRegistrationClient)
+	autoRegistrationController := autoregister.NewAutoRegisterController(
+		aggregatorServer.APIRegistrationInformers.Apiregistration().V1().APIServices(), apiRegistrationClient)
 	apiServices := apiServicesToRegister(delegateAPIServer, autoRegistrationController)
 
 	crdRegistrationController := crdregistration.NewCRDRegistrationController(
 		apiExtensionInformers.Apiextensions().V1().CustomResourceDefinitions(),
 		autoRegistrationController)
 
-	err = aggregatorServer.GenericAPIServer.AddPostStartHook("kube-apiserver-autoregistration", func(context genericapiserver.PostStartHookContext) error {
+	err = aggregatorServer.GenericAPIServer.AddPostStartHook("kube-apiserver-autoregistration", func(
+		context genericapiserver.PostStartHookContext,
+	) error {
 		go crdRegistrationController.Run(5, context.StopCh)
 		go func() {
 			// let the CRD controller process the initial set of CRDs before starting the autoregistration controller.
 			// this prevents the autoregistration controller's initial sync from deleting APIServices for CRDs that still exist.
 			// we only need to do this if CRDs are enabled on this server.  We can't use discovery because we are the source for discovery.
-			if aggregatorConfig.GenericConfig.MergedResourceConfig.ResourceEnabled(apiextensionsv1.SchemeGroupVersion.WithResource("apiextensions.k8s.io")) {
+			if aggregatorConfig.GenericConfig.MergedResourceConfig.ResourceEnabled(
+				apiextensionsv1.SchemeGroupVersion.WithResource("apiextensions.k8s.io")) {
 				crdRegistrationController.WaitForInitialSync()
 			}
 			autoRegistrationController.Run(5, context.StopCh)
@@ -176,7 +192,9 @@ func RunAggregator(server *aggregatorapiserver.APIAggregator, stopCh <-chan stru
 	return prepared.Run(stopCh)
 }
 
-func apiServicesToRegister(delegateAPIServer genericapiserver.DelegationTarget, registration autoregister.AutoAPIServiceRegistration) []*v1.APIService {
+func apiServicesToRegister(delegateAPIServer genericapiserver.DelegationTarget,
+	registration autoregister.AutoAPIServiceRegistration,
+) []*v1.APIService {
 	apiServices := []*v1.APIService{}
 
 	for _, curr := range delegateAPIServer.ListedPaths() {
@@ -233,7 +251,9 @@ func makeAPIService(gv schema.GroupVersion) *v1.APIService {
 
 // makeAPIServiceAvailableHealthCheck returns a healthz check that returns healthy
 // once all of the specified services have been observed to be available at least once.
-func makeAPIServiceAvailableHealthCheck(name string, apiServices []*v1.APIService, apiServiceInformer apiregistrationinformers.APIServiceInformer) healthz.HealthChecker {
+func makeAPIServiceAvailableHealthCheck(name string, apiServices []*v1.APIService,
+	apiServiceInformer apiregistrationinformers.APIServiceInformer,
+) healthz.HealthChecker {
 	// Track the auto-registered API services that have not been observed to be available yet
 	pendingServiceNamesLock := &sync.RWMutex{}
 	pendingServiceNames := sets.NewString()

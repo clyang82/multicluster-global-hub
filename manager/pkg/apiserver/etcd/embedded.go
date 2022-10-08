@@ -21,7 +21,6 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/embed"
-
 	"k8s.io/klog/v2"
 )
 
@@ -54,7 +53,8 @@ func Run(ctx context.Context, peerPort, clientPort string) (ClientInfo, error) {
 		return ClientInfo{}, err
 	}
 
-	if err := generateClientAndServerCerts([]string{"localhost"}, filepath.Join(cfg.Dir, "secrets")); err != nil {
+	if err := generateClientAndServerCerts([]string{"localhost"},
+		filepath.Join(cfg.Dir, "secrets")); err != nil {
 		return ClientInfo{}, err
 	}
 	cfg.PeerTLSInfo.ServerName = "localhost"
@@ -69,7 +69,8 @@ func Run(ctx context.Context, peerPort, clientPort string) (ClientInfo, error) {
 	cfg.ClientTLSInfo.TrustedCAFile = filepath.Join(cfg.Dir, "secrets", "ca", "cert.pem")
 	cfg.ClientTLSInfo.ClientCertAuth = true
 
-	if enableUnsafeEtcdDisableFsyncHack, _ := strconv.ParseBool(os.Getenv("UNSAFE_E2E_HACK_DISABLE_ETCD_FSYNC")); enableUnsafeEtcdDisableFsyncHack {
+	if enableUnsafeEtcdDisableFsyncHack, _ := strconv.ParseBool(
+		os.Getenv("UNSAFE_E2E_HACK_DISABLE_ETCD_FSYNC")); enableUnsafeEtcdDisableFsyncHack {
 		cfg.UnsafeNoFsync = true
 	}
 
@@ -176,21 +177,24 @@ func generateClientAndServerCerts(hosts []string, dir string) error {
 	if err := ecPrivateKeyToFile(caKey, filepath.Join(dir, "ca", "key.pem")); err != nil {
 		return err
 	}
-	if err := certToFile(caTemplate, caTemplate, &caKey.PublicKey, caKey, filepath.Join(dir, "ca", "cert.pem")); err != nil {
+	if err := certToFile(caTemplate, caTemplate, &caKey.PublicKey, caKey,
+		filepath.Join(dir, "ca", "cert.pem")); err != nil {
 		return err
 	}
 
 	if err := ecPrivateKeyToFile(serverKey, filepath.Join(dir, "peer", "key.pem")); err != nil {
 		return err
 	}
-	if err := certToFile(serverTemplate, caTemplate, &serverKey.PublicKey, caKey, filepath.Join(dir, "peer", "cert.pem")); err != nil {
+	if err := certToFile(serverTemplate, caTemplate, &serverKey.PublicKey, caKey,
+		filepath.Join(dir, "peer", "cert.pem")); err != nil {
 		return err
 	}
 
 	if err := ecPrivateKeyToFile(clientKey, filepath.Join(dir, "client", "key.pem")); err != nil {
 		return err
 	}
-	if err := certToFile(clientTemplate, caTemplate, &clientKey.PublicKey, caKey, filepath.Join(dir, "client", "cert.pem")); err != nil {
+	if err := certToFile(clientTemplate, caTemplate, &clientKey.PublicKey, caKey,
+		filepath.Join(dir, "client", "cert.pem")); err != nil {
 		return err
 	}
 
@@ -207,7 +211,7 @@ func certToFile(template *x509.Certificate, parent *x509.Certificate, publicKey 
 	if err := pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: b}); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, buf.Bytes(), 0600)
+	return ioutil.WriteFile(path, buf.Bytes(), 0o600)
 }
 
 func ecPrivateKeyToFile(key *ecdsa.PrivateKey, path string) error {
@@ -219,8 +223,8 @@ func ecPrivateKeyToFile(key *ecdsa.PrivateKey, path string) error {
 	if err := pem.Encode(buf, &pem.Block{Type: "EC PRIVATE KEY", Bytes: b}); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, buf.Bytes(), 0600)
+	return ioutil.WriteFile(path, buf.Bytes(), 0o600)
 }

@@ -24,7 +24,8 @@ func NewOptions() *Options {
 }
 
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&o.KubeConfigFile, "kube-config-file", o.KubeConfigFile, "Kubernetes configuration file to connect to kube-apiserver")
+	fs.StringVar(&o.KubeConfigFile, "kube-config-file", o.KubeConfigFile,
+		"Kubernetes configuration file to connect to kube-apiserver")
 	o.ServerRun.AddUniversalFlags(fs)
 	o.SecureServing.AddFlags(fs)
 	o.Authentication.AddFlags(fs)

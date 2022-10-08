@@ -54,8 +54,10 @@ func CreateExtensions(opts *Options, clientInfo etcd.ClientInfo) (genericapiserv
 	}
 
 	// TODO have a "real" external address
-	if err := o.RecommendedOptions.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {
-		return genericapiserver.Config{}, *o.RecommendedOptions.Etcd, nil, fmt.Errorf("error creating self-signed certificates: %w", err)
+	if err := o.RecommendedOptions.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost",
+		nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {
+		return genericapiserver.Config{}, *o.RecommendedOptions.Etcd, nil,
+			fmt.Errorf("error creating self-signed certificates: %w", err)
 	}
 
 	serverConfig := genericapiserver.NewRecommendedConfig(apiextensionsapiserver.Codecs)
@@ -63,7 +65,8 @@ func CreateExtensions(opts *Options, clientInfo etcd.ClientInfo) (genericapiserv
 		return genericapiserver.Config{}, *o.RecommendedOptions.Etcd, nil, err
 	}
 
-	if err := o.APIEnablement.ApplyTo(&serverConfig.Config, apiextensionsapiserver.DefaultAPIResourceConfigSource(), apiextensionsapiserver.Scheme); err != nil {
+	if err := o.APIEnablement.ApplyTo(&serverConfig.Config,
+		apiextensionsapiserver.DefaultAPIResourceConfigSource(), apiextensionsapiserver.Scheme); err != nil {
 		return serverConfig.Config, *o.RecommendedOptions.Etcd, nil, err
 	}
 
