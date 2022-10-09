@@ -19,7 +19,6 @@ import (
 	"strconv"
 	"time"
 
-	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/embed"
 	"k8s.io/klog/v2"
 )
@@ -48,10 +47,6 @@ func Run(ctx context.Context, peerPort, clientPort string) (ClientInfo, error) {
 	cfg.LCUrls = []url.URL{{Scheme: "https", Host: "localhost:" + clientPort}}
 	cfg.ACUrls = []url.URL{{Scheme: "https", Host: "localhost:" + clientPort}}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
-
-	if err := fileutil.TouchDirAll(cfg.Dir); err != nil {
-		return ClientInfo{}, err
-	}
 
 	if err := generateClientAndServerCerts([]string{"localhost"},
 		filepath.Join(cfg.Dir, "secrets")); err != nil {

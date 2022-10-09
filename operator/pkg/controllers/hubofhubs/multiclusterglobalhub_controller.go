@@ -202,6 +202,7 @@ func (r *MulticlusterGlobalHubReconciler) Reconcile(ctx context.Context, req ctr
 //+kubebuilder:rbac:groups="apiextensions.k8s.io",resources=customresourcedefinitions,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups="authorization.k8s.io",resources=subjectaccessreviews,verbs=get;create
 //+kubebuilder:rbac:groups="authentication.k8s.io",resources=tokenreviews,verbs=get;create
+//+kubebuilder:rbac:groups="cluster.open-cluster-management.io",resources=placements;managedclustersets;managedclustersetbindings,verbs=get;create;list;watch
 
 func (r *MulticlusterGlobalHubReconciler) reconcileNativeGlobalHub(ctx context.Context,
 	mgh *operatorv1alpha2.MulticlusterGlobalHub, log logr.Logger,
