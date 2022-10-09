@@ -12,17 +12,14 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	placementrulev1 "open-cluster-management.io/multicloud-operators-subscription/pkg/apis/apps/placementrule/v1"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/apiserver/controllers"
-)
-
-const (
-	rootPolicyLabel    = "policy.open-cluster-management.io/root-policy"
-	localResourceLabel = "hub-of-hubs.open-cluster-management.io/local-resource"
+	"github.com/stolostron/multicluster-global-hub/pkg/constants"
 )
 
 func (s *GlobalHubApiServer) CreateCache(ctx context.Context) error {
@@ -40,25 +37,32 @@ func (s *GlobalHubApiServer) CreateCache(ctx context.Context) error {
 
 	gvkLabelsMap := map[schema.GroupVersionKind][]filteredcache.Selector{
 		apiextensionsv1.SchemeGroupVersion.WithKind("CustomResourceDefinition"): {
-			// {FieldSelector: fmt.Sprintf("metadata.name==%s", "policies.policy.open-cluster-management.io")},
-			// {FieldSelector: fmt.Sprintf("metadata.name==%s", "placementbindings.policy.open-cluster-management.io")},
-			// {FieldSelector: fmt.Sprintf("metadata.name==%s", "placementrules.apps.open-cluster-management.io")},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s", "policies.policy.open-cluster-management.io")},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s", "placementbindings.policy.open-cluster-management.io")},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s", "placementrules.apps.open-cluster-management.io")},
 			{FieldSelector: fmt.Sprintf("metadata.name==%s", "managedclusters.cluster.open-cluster-management.io")},
-			// {FieldSelector: fmt.Sprintf("metadata.name==%s", "subscriptionreports.apps.open-cluster-management.io")},
-			// {FieldSelector: fmt.Sprintf("metadata.name==%s", "subscriptions.apps.open-cluster-management.io")},
-			// {FieldSelector: fmt.Sprintf("metadata.name==%s", "subscriptionstatuses.apps.open-cluster-management.io")},
-			{FieldSelector: fmt.Sprintf("metadata.name==%s", "clusterdeployments.hive.openshift.io")},
-			{FieldSelector: fmt.Sprintf("metadata.name==%s", "machinepools.hive.openshift.io")},
-			{FieldSelector: fmt.Sprintf("metadata.name==%s", "klusterletaddonconfigs.agent.open-cluster-management.io")},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s", "subscriptionreports.apps.open-cluster-management.io")},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s", "subscriptions.apps.open-cluster-management.io")},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s", "subscriptionstatuses.apps.open-cluster-management.io")},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s", "placements.cluster.open-cluster-management.io")},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s", "managedclustersetbindings.cluster.open-cluster-management.io")},
+			{FieldSelector: fmt.Sprintf("metadata.name==%s", "managedclustersets.cluster.open-cluster-management.io")},
+
+			// {FieldSelector: fmt.Sprintf("metadata.name==%s", "clusterdeployments.hive.openshift.io")},
+			// {FieldSelector: fmt.Sprintf("metadata.name==%s", "machinepools.hive.openshift.io")},
+			// {FieldSelector: fmt.Sprintf("metadata.name==%s", "klusterletaddonconfigs.agent.open-cluster-management.io")},
 		},
 		policyv1.SchemeGroupVersion.WithKind("Policy"): {
-			{LabelSelector: fmt.Sprint("!" + localResourceLabel)},
+			{LabelSelector: fmt.Sprint("!" + constants.GlobalHubLocalResource)},
 		},
 		policyv1.SchemeGroupVersion.WithKind("PlacementBinding"): {
-			{LabelSelector: fmt.Sprint("!" + localResourceLabel)},
+			{LabelSelector: fmt.Sprint("!" + constants.GlobalHubLocalResource)},
 		},
 		placementrulev1.SchemeGroupVersion.WithKind("PlacementRule"): {
-			{LabelSelector: fmt.Sprint("!" + localResourceLabel)},
+			{LabelSelector: fmt.Sprint("!" + constants.GlobalHubLocalResource)},
+		},
+		clusterv1beta1.SchemeGroupVersion.WithKind("Placements"): {
+			{LabelSelector: fmt.Sprint("!" + constants.GlobalHubLocalResource)},
 		},
 	}
 

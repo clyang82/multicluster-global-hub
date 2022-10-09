@@ -42,6 +42,7 @@ type ConfigManager struct {
 	SpecWorkPoolSize             int
 	SpecEnforceHohRbac           bool
 	StatusDeltaCountSwitchFactor int
+	FromKubeconfig               string
 	Kafka                        *KafkaConfig
 	SyncService                  *SyncServiceConfig
 }
@@ -56,6 +57,7 @@ func NewConfigManager() (*ConfigManager, error) {
 		SyncService: &SyncServiceConfig{},
 	}
 
+	pflag.StringVar(&configManager.FromKubeconfig, "from-kubeconfig", configManager.FromKubeconfig, "Kubeconfig for accessing the global cluster.")
 	pflag.StringVar(&configManager.LeafHubName, "leaf-hub-name", "", "The name of the leaf hub.")
 	pflag.StringVar(&configManager.Kafka.BootstrapServers, "kafka-bootstrap-server", "",
 		"The bootstrap server for kafka.")
@@ -101,16 +103,19 @@ func NewConfigManager() (*ConfigManager, error) {
 	if configManager.LeafHubName == "" {
 		return nil, fmt.Errorf("flag leaf-hub-name can't be empty")
 	}
-	if configManager.Kafka.ProducerId == "" {
-		configManager.Kafka.ProducerId = configManager.LeafHubName
-	}
-	if configManager.SpecWorkPoolSize < 1 || configManager.SpecWorkPoolSize > 100 {
-		return nil, fmt.Errorf("flag consumer-worker-pool-size should be in the scope [1, 100]")
-	}
 
-	if configManager.Kafka.ProducerMessageLimit > maxMessageSizeLimit {
-		return nil, fmt.Errorf("flag kafka-message-size-limit %d must not exceed %d",
-			configManager.Kafka.ProducerMessageLimit, maxMessageSizeLimit)
+	if configManager.TransportType == "kafka" {
+		if configManager.Kafka.ProducerId == "" {
+			configManager.Kafka.ProducerId = configManager.LeafHubName
+		}
+		if configManager.SpecWorkPoolSize < 1 || configManager.SpecWorkPoolSize > 100 {
+			return nil, fmt.Errorf("flag consumer-worker-pool-size should be in the scope [1, 100]")
+		}
+
+		if configManager.Kafka.ProducerMessageLimit > maxMessageSizeLimit {
+			return nil, fmt.Errorf("flag kafka-message-size-limit %d must not exceed %d",
+				configManager.Kafka.ProducerMessageLimit, maxMessageSizeLimit)
+		}
 	}
 	return configManager, nil
 }

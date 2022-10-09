@@ -623,27 +623,46 @@ func generateWorkManifestsFromBuffer(buf *bytes.Buffer) ([]workv1.Manifest, erro
 func applyHoHAgentWork(ctx context.Context, c client.Client, kubeClient kubernetes.Interface, log logr.Logger,
 	mgh *operatorv1alpha2.MulticlusterGlobalHub, managedClusterName string,
 ) error {
-	kafkaBootstrapServer, kafkaCA, err := utils.GetKafkaConfig(ctx, kubeClient, mgh)
-	if err != nil {
-		return err
-	}
-
-	agentConfigValues := &HoHAgentConfigValues{
-		HoHAgentImage:        config.GetImage("multicluster_global_hub_agent"),
-		LeadHubID:            managedClusterName,
-		KafkaBootstrapServer: kafkaBootstrapServer,
-		KafkaCA:              kafkaCA,
-	}
-
-	tpl, err := parseNonHypershiftTemplates(nonHypershiftManifestFS)
-	if err != nil {
-		return err
-	}
 
 	var buf bytes.Buffer
-	if err = tpl.ExecuteTemplate(&buf, "manifests/nonhypershift/agent", agentConfigValues); err != nil {
-		return err
+	if mgh.Spec.DataLayer.Type == operatorv1alpha2.LargeScale {
+
+		kafkaBootstrapServer, kafkaCA, err := utils.GetKafkaConfig(ctx, kubeClient, mgh)
+		if err != nil {
+			return err
+		}
+
+		agentConfigValues := &HoHAgentConfigValues{
+			HoHAgentImage:        config.GetImage("multicluster_global_hub_agent"),
+			LeadHubID:            managedClusterName,
+			KafkaBootstrapServer: kafkaBootstrapServer,
+			KafkaCA:              kafkaCA,
+		}
+
+		tpl, err := parseNonHypershiftTemplates(nonHypershiftManifestFS)
+		if err != nil {
+			return err
+		}
+
+		if err = tpl.ExecuteTemplate(&buf, "manifests/nonhypershift/agent", agentConfigValues); err != nil {
+			return err
+		}
+	} else {
+		agentConfigValues := &HoHAgentConfigValues{
+			HoHAgentImage: config.GetImage("multicluster_global_hub_agent"),
+			LeadHubID:     managedClusterName,
+		}
+
+		tpl, err := parseNonHypershiftTemplates(nonHypershiftManifestFS)
+		if err != nil {
+			return err
+		}
+
+		if err = tpl.ExecuteTemplate(&buf, "manifests/nonhypershift/syncer", agentConfigValues); err != nil {
+			return err
+		}
 	}
+
 	// log.Info("templates for agent objects", buf.String())
 
 	agentManifests := []workv1.Manifest{}
@@ -686,7 +705,7 @@ func applyHoHAgentWork(ctx context.Context, c client.Client, kubeClient kubernet
 		},
 	}
 
-	_, err = applyManifestWork(ctx, c, log, agentWork)
+	_, err := applyManifestWork(ctx, c, log, agentWork)
 	return err
 }
 

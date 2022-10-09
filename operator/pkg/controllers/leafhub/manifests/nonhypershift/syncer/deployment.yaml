@@ -17,19 +17,26 @@ spec:
       serviceAccountName: multicluster-global-hub-syncer-sa
       containers:
       - args:
-        - "/syncer"
-        - "--from-kubeconfig=/multicluster-global-hub-config/kubeconfig"
+        - '--zap-devel=true'
+        - --pod-namespace=$(POD_NAMESPACE)
+        - --leaf-hub-name={{.LeadHubID}}
+        - --transport-type=syncer
+        - --from-kubeconfig=/multicluster-global-hub-config/kubeconfig
         env:
         name: multicluster-global-hub-syncer
-        image: quay.io/clyang82/multicluster-global-hub-agent:latest
+        image: {{.HoHAgentImage}}
         imagePullPolicy: Always
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          privileged: false
-          runAsNonRoot: true
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
         volumeMounts:
         - mountPath: /multicluster-global-hub-config
           name: multicluster-global-hub-kubeconfig

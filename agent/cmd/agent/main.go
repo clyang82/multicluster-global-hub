@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiRuntime "k8s.io/apimachinery/pkg/runtime"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/tools/clientcmd"
 	clustersV1 "open-cluster-management.io/api/cluster/v1"
 	clustersv1alpha1 "open-cluster-management.io/api/cluster/v1alpha1"
 	clustersV1beta1 "open-cluster-management.io/api/cluster/v1beta1"
@@ -32,6 +33,7 @@ import (
 	"github.com/stolostron/multicluster-global-hub/agent/pkg/spec/bundle"
 	specController "github.com/stolostron/multicluster-global-hub/agent/pkg/spec/controller"
 	statusController "github.com/stolostron/multicluster-global-hub/agent/pkg/status/controller"
+	"github.com/stolostron/multicluster-global-hub/agent/pkg/syncer"
 	consumer "github.com/stolostron/multicluster-global-hub/agent/pkg/transport/consumer"
 	producer "github.com/stolostron/multicluster-global-hub/agent/pkg/transport/producer"
 	"github.com/stolostron/multicluster-global-hub/pkg/compressor"
@@ -42,11 +44,14 @@ const (
 	METRICS_PORT               = 9435
 	TRANSPORT_TYPE_KAFKA       = "kafka"
 	TRANSPORT_TYPE_SYNC_SVC    = "sync-service"
+	TRANSPORT_TYPE_SYNCER      = "syncer"
 	LEADER_ELECTION_ID         = "multicluster-global-hub-agent-lock"
 	HOH_LOCAL_NAMESPACE        = "open-cluster-management-global-hub-local"
 	INCARNATION_CONFIG_MAP_KEY = "incarnation"
 	BASE10                     = 10
 	UINT64_SIZE                = 64
+
+	numThreads = 2
 )
 
 func main() {
@@ -63,37 +68,66 @@ func doMain() int {
 		return 1
 	}
 
-	// transport layer initialization
-	genericBundleChan := make(chan *bundle.GenericBundle)
-	defer close(genericBundleChan)
+	if configManager.TransportType != TRANSPORT_TYPE_SYNCER {
 
-	consumer, err := getConsumer(configManager, genericBundleChan)
+		// transport layer initialization
+		genericBundleChan := make(chan *bundle.GenericBundle)
+		defer close(genericBundleChan)
+
+		consumer, err := getConsumer(configManager, genericBundleChan)
+		if err != nil {
+			log.Error(err, "transport consumer initialization error")
+			return 1
+		}
+		producer, err := getProducer(configManager)
+		if err != nil {
+			log.Error(err, "transport producer initialization error")
+		}
+
+		consumer.Start()
+		producer.Start()
+		defer consumer.Stop()
+		defer producer.Stop()
+
+		mgr, err := createManager(consumer, producer, configManager)
+		if err != nil {
+			log.Error(err, "failed to create manager")
+			return 1
+		}
+
+		log.Info("starting the Cmd")
+		if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+			log.Error(err, "manager exited non-zero")
+			return 1
+		}
+		return 0
+	}
+
+	// syncer initialization
+	hohConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: configManager.FromKubeconfig}, nil).ClientConfig()
 	if err != nil {
-		log.Error(err, "transport consumer initialization error")
+		log.Error(err, "failed to create global hub client config")
 		return 1
 	}
-	producer, err := getProducer(configManager)
-	if err != nil {
-		log.Error(err, "transport producer initialization error")
-	}
 
-	consumer.Start()
-	producer.Start()
-	defer consumer.Stop()
-	defer producer.Stop()
-
-	mgr, err := createManager(consumer, producer, configManager)
+	toConfig, err := clientcmd.BuildConfigFromFlags("", "")
 	if err != nil {
-		log.Error(err, "failed to create manager")
+		log.Error(err, "failed to create client config")
 		return 1
 	}
 
-	log.Info("starting the Cmd")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		log.Error(err, "manager exited non-zero")
+	if err := syncer.StartSyncer(
+		ctrl.SetupSignalHandler(),
+		&syncer.SyncerConfig{
+			UpstreamConfig:   hohConfig,
+			DownstreamConfig: toConfig,
+		},
+		numThreads,
+	); err != nil {
+		log.Error(err, "failed to start syncer")
 		return 1
 	}
-
 	return 0
 }
 
