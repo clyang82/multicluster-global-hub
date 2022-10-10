@@ -394,9 +394,21 @@ func doMain() int {
 			log.Error(err, "dynamic.NewForConfig")
 			return 1
 		}
+
+		ctx := genericapiserver.SetupSignalContext()
+		webhookServer := &webhook.Server{
+			Port:    webhookPort,
+			CertDir: webhookCertDir,
+		}
+		log.Info("registering webhooks to the webhook server")
+		webhookServer.Register("/mutating", &webhook.Admission{
+			Handler: &mgrwebhook.AdmissionHandler{},
+		})
+		go webhookServer.Start(ctx)
+
 		s := apiserver.NewGlobalHubApiServer(managerConfig.apiServerOptions, dynamicClient, clusterCfg)
 
-		if err := s.RunGlobalHubApiServer(genericapiserver.SetupSignalContext()); err != nil {
+		if err := s.RunGlobalHubApiServer(ctx); err != nil {
 			log.Error(err, "manager exited non-zero")
 			return 1
 		}

@@ -85,7 +85,7 @@ func (s *GlobalHubApiServer) CreateCache(ctx context.Context) error {
 }
 
 func (s *GlobalHubApiServer) InstallCRDController(ctx context.Context, config *rest.Config) error {
-	controllerName := "hoh-crd-controller"
+	controllerName := "global-hub-crd-controller"
 	config = rest.AddUserAgent(rest.CopyConfig(config), controllerName)
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
@@ -112,7 +112,7 @@ func (s *GlobalHubApiServer) InstallCRDController(ctx context.Context, config *r
 }
 
 func (s *GlobalHubApiServer) InstallPolicyController(ctx context.Context, config *rest.Config) error {
-	controllerName := "hoh-policy-controller"
+	controllerName := "global-hub-policy-controller"
 	config = rest.AddUserAgent(rest.CopyConfig(config), controllerName)
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
@@ -138,7 +138,7 @@ func (s *GlobalHubApiServer) InstallPolicyController(ctx context.Context, config
 }
 
 func (s *GlobalHubApiServer) InstallPlacementRuleController(ctx context.Context, config *rest.Config) error {
-	controllerName := "hoh-placementrule-controller"
+	controllerName := "global-hub-placementrule-controller"
 	config = rest.AddUserAgent(rest.CopyConfig(config), controllerName)
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
@@ -163,9 +163,35 @@ func (s *GlobalHubApiServer) InstallPlacementRuleController(ctx context.Context,
 	return nil
 }
 
+func (s *GlobalHubApiServer) InstallPlacementController(ctx context.Context, config *rest.Config) error {
+	controllerName := "global-hub-placements-controller"
+	config = rest.AddUserAgent(rest.CopyConfig(config), controllerName)
+	dynamicClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		klog.Fatal(err)
+	}
+
+	informer, err := s.Cache.GetInformerForKind(ctx,
+		clusterv1beta1.SchemeGroupVersion.WithKind("Placement"))
+	if err != nil {
+		return err
+	}
+	c := controllers.NewGenericController(ctx, controllerName, dynamicClient,
+		clusterv1beta1.SchemeGroupVersion.WithResource("placements"), informer, s.Cache,
+		func() client.Object { return &clusterv1beta1.Placement{} })
+
+	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(
+		hookContext genericapiserver.PostStartHookContext,
+	) error {
+		go c.Run(ctx, 1)
+		return nil
+	})
+	return nil
+}
+
 func (s *GlobalHubApiServer) InstallPlacementBindingController(ctx context.Context, config *rest.Config) error {
-	controllerName := "hoh-placementbinding-controller"
-	config = rest.AddUserAgent(rest.CopyConfig(config), "hoh-placementbinding")
+	controllerName := "global-hub-placementbinding-controller"
+	config = rest.AddUserAgent(rest.CopyConfig(config), "global-hub-placementbinding")
 	dynamicClient, err := dynamic.NewForConfig(config)
 	if err != nil {
 		klog.Fatal(err)

@@ -89,23 +89,25 @@ func (s *GlobalHubApiServer) RunGlobalHubApiServer(ctx context.Context) error {
 		return err
 	}
 
-	// err = s.InstallPolicyController(ctx, controllerConfig)
-	// if err != nil {
-	// 	return err
-	// }
+	err = s.InstallPolicyController(ctx, controllerConfig)
+	if err != nil {
+		return err
+	}
 
-	// err = s.InstallPlacementRuleController(ctx, controllerConfig)
-	// if err != nil {
-	// 	return err
-	// }
+	err = s.InstallPlacementRuleController(ctx, controllerConfig)
+	if err != nil {
+		return err
+	}
 
-	// err = s.InstallPlacementBindingController(ctx, controllerConfig)
-	// if err != nil {
-	// 	return err
-	// }
+	err = s.InstallPlacementController(ctx, controllerConfig)
+	if err != nil {
+		return err
+	}
 
-	// TODO: kubectl explain currently failing on crd resources, but works on apiservices
-	// kubectl get and describe do work, though
+	err = s.InstallPlacementBindingController(ctx, controllerConfig)
+	if err != nil {
+		return err
+	}
 
 	// Add our custom hooks to the underlying api server
 	for _, entry := range s.postStartHooks {
