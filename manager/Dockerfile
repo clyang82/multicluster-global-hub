@@ -33,7 +33,7 @@ RUN chmod 0775 /opt/kafka
 # allow user to fully control the /etc/etcd-server directory
 RUN mkdir /etc/etcd-server
 RUN chown ${USER_UID}:0 /etc/etcd-server
-RUN chmod 0700 /etc/etcd-server
+RUN chmod 0775 /etc/etcd-server
 
 USER ${USER_UID}
 ENTRYPOINT ["/usr/local/bin/manager"]

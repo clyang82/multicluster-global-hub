@@ -29,8 +29,6 @@ spec:
         volumeMounts:
         - mountPath: /var/run/apiservice
           name: apiservice-certs
-      securityContext:
-        runAsUser: 1001
       volumes:
       - name: apiservice-certs
         secret:
