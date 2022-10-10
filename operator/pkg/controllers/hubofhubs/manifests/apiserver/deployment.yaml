@@ -26,24 +26,13 @@ spec:
         name: multicluster-global-hub-apiserver
         image: "{{.Image}}"
         imagePullPolicy: Always
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          privileged: false
-          runAsNonRoot: true
         volumeMounts:
         - mountPath: /var/run/apiservice
           name: apiservice-certs
-        - mountPath: /etc/etcd-server
-          name: resource-dir
+      securityContext:
+        runAsUser: 1001
       volumes:
       - name: apiservice-certs
         secret:
           defaultMode: 420
           secretName: multicluster-global-hub-apiserver
-      - hostPath:
-          path: /etc/etcd-server
-          type: ""
-        name: resource-dir
