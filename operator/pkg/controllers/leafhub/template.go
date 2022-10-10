@@ -32,7 +32,8 @@ func parseNonHypershiftTemplates(manifestFS embed.FS) (*template.Template, error
 		}
 		if d.IsDir() && (strings.HasSuffix(file, "subscription") ||
 			strings.HasSuffix(file, "mch") ||
-			strings.HasSuffix(file, "agent")) {
+			strings.HasSuffix(file, "agent") ||
+			strings.HasSuffix(file, "syncer")) {
 			manifests, err := readFilesInDir(manifestFS, file)
 			if err != nil {
 				return err

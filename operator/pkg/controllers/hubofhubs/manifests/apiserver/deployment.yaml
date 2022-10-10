@@ -36,8 +36,14 @@ spec:
         volumeMounts:
         - mountPath: /var/run/apiservice
           name: apiservice-certs
+        - mountPath: /etc/etcd-server
+          name: resource-dir
       volumes:
       - name: apiservice-certs
         secret:
           defaultMode: 420
           secretName: multicluster-global-hub-apiserver
+      - hostPath:
+          path: /etc/etcd-server
+          type: ""
+        name: resource-dir

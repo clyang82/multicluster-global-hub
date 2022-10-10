@@ -34,6 +34,9 @@ func (s *GlobalHubApiServer) CreateCache(ctx context.Context) error {
 	if err := placementrulev1.AddToScheme(scheme); err != nil {
 		return err
 	}
+	if err := clusterv1beta1.AddToScheme(scheme); err != nil {
+		return err
+	}
 
 	gvkLabelsMap := map[schema.GroupVersionKind][]filteredcache.Selector{
 		apiextensionsv1.SchemeGroupVersion.WithKind("CustomResourceDefinition"): {
@@ -61,7 +64,7 @@ func (s *GlobalHubApiServer) CreateCache(ctx context.Context) error {
 		placementrulev1.SchemeGroupVersion.WithKind("PlacementRule"): {
 			{LabelSelector: fmt.Sprint("!" + constants.GlobalHubLocalResource)},
 		},
-		clusterv1beta1.SchemeGroupVersion.WithKind("Placements"): {
+		clusterv1beta1.SchemeGroupVersion.WithKind("Placement"): {
 			{LabelSelector: fmt.Sprint("!" + constants.GlobalHubLocalResource)},
 		},
 	}
