@@ -2,6 +2,7 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: multicluster-global-hub-syncer
+  namespace: open-cluster-management
   labels:
     app: multicluster-global-hub-syncer
 spec:
