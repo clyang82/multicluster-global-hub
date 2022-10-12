@@ -26,6 +26,10 @@ spec:
         name: multicluster-global-hub-apiserver
         image: "{{.Image}}"
         imagePullPolicy: Always
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
         volumeMounts:
         - mountPath: /var/run/apiservice
           name: apiservice-certs
