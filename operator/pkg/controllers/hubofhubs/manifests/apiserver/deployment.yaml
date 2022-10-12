@@ -33,8 +33,14 @@ spec:
         volumeMounts:
         - mountPath: /var/run/apiservice
           name: apiservice-certs
+        - mountPath: /webhook-certs
+          name: webhook-certs
+          readOnly: true
       volumes:
       - name: apiservice-certs
         secret:
           defaultMode: 420
           secretName: multicluster-global-hub-apiserver
+      - name: webhook-certs
+        secret:
+          secretName: multicluster-global-hub-webhook-certs

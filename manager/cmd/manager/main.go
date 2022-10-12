@@ -404,7 +404,11 @@ func doMain() int {
 		webhookServer.Register("/mutating", &webhook.Admission{
 			Handler: &mgrwebhook.AdmissionHandler{},
 		})
-		go webhookServer.Start(ctx)
+		go func() {
+			if err = webhookServer.Start(ctx); err != nil {
+				log.Error(err, "cannot start the webhook server")
+			}
+		}()
 
 		s := apiserver.NewGlobalHubApiServer(managerConfig.apiServerOptions, dynamicClient, clusterCfg)
 

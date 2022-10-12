@@ -31,4 +31,4 @@ spec:
     targetPort: 9443
     name: webhook-server
   selector:
-    name: multicluster-global-hub-apiserver
+    app: multicluster-global-hub-apiserver
