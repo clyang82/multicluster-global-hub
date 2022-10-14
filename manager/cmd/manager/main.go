@@ -16,10 +16,13 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/spf13/pflag"
+	apiruntime "k8s.io/apimachinery/pkg/runtime"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/dynamic"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/tools/clientcmd"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
+	placementrulev1 "open-cluster-management.io/multicloud-operators-subscription/pkg/apis/apps/placementrule/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -395,6 +398,15 @@ func doMain() int {
 			return 1
 		}
 
+		err = placementrulev1.AddToScheme(apiruntime.NewScheme())
+		if err != nil {
+			return 1
+		}
+		err = clusterv1beta1.AddToScheme(apiruntime.NewScheme())
+		if err != nil {
+			return 1
+		}
+
 		ctx := genericapiserver.SetupSignalContext()
 		webhookServer := &webhook.Server{
 			Port:    webhookPort,
@@ -405,7 +417,8 @@ func doMain() int {
 			Handler: &mgrwebhook.AdmissionHandler{},
 		})
 		go func() {
-			if err = webhookServer.Start(ctx); err != nil {
+			// StartStandalone runs a webhook server without a controller manager
+			if err = webhookServer.StartStandalone(ctx, apiruntime.NewScheme()); err != nil {
 				log.Error(err, "cannot start the webhook server")
 			}
 		}()
