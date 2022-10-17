@@ -100,7 +100,7 @@ func (s *GlobalHubApiServer) InstallCRDController(ctx context.Context, config *r
 	// configure the dynamic informer event handlers
 	c := controllers.NewGenericController(ctx, controllerName, dynamicClient,
 		apiextensionsv1.SchemeGroupVersion.WithResource("customresourcedefinitions"), informer, s.Cache,
-		func() client.Object { return &apiextensionsv1.CustomResourceDefinition{} })
+		func() client.Object { return &apiextensionsv1.CustomResourceDefinition{} }, nil)
 
 	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(
 		hookContext genericapiserver.PostStartHookContext,
@@ -126,7 +126,7 @@ func (s *GlobalHubApiServer) InstallPolicyController(ctx context.Context, config
 	}
 	c := controllers.NewGenericController(ctx, controllerName, dynamicClient,
 		policyv1.SchemeGroupVersion.WithResource("policies"), informer, s.Cache,
-		func() client.Object { return &policyv1.Policy{} })
+		func() client.Object { return &policyv1.Policy{} }, nil)
 
 	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(
 		hookContext genericapiserver.PostStartHookContext,
@@ -150,9 +150,15 @@ func (s *GlobalHubApiServer) InstallPlacementRuleController(ctx context.Context,
 	if err != nil {
 		return err
 	}
+
+	manipulateObjFunc := func(obj client.Object) {
+		policy := obj.(*placementrulev1.PlacementRule)
+		policy.Spec.SchedulerName = ""
+	}
+
 	c := controllers.NewGenericController(ctx, controllerName, dynamicClient,
 		placementrulev1.SchemeGroupVersion.WithResource("placementrules"), informer, s.Cache,
-		func() client.Object { return &placementrulev1.PlacementRule{} })
+		func() client.Object { return &placementrulev1.PlacementRule{} }, manipulateObjFunc)
 
 	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(
 		hookContext genericapiserver.PostStartHookContext,
@@ -178,7 +184,7 @@ func (s *GlobalHubApiServer) InstallPlacementController(ctx context.Context, con
 	}
 	c := controllers.NewGenericController(ctx, controllerName, dynamicClient,
 		clusterv1beta1.SchemeGroupVersion.WithResource("placements"), informer, s.Cache,
-		func() client.Object { return &clusterv1beta1.Placement{} })
+		func() client.Object { return &clusterv1beta1.Placement{} }, nil)
 
 	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(
 		hookContext genericapiserver.PostStartHookContext,
@@ -204,7 +210,7 @@ func (s *GlobalHubApiServer) InstallPlacementBindingController(ctx context.Conte
 	}
 	c := controllers.NewGenericController(ctx, controllerName, dynamicClient,
 		policyv1.SchemeGroupVersion.WithResource("placementbindings"), informer, s.Cache,
-		func() client.Object { return &policyv1.PlacementBinding{} })
+		func() client.Object { return &policyv1.PlacementBinding{} }, nil)
 
 	s.AddPostStartHook(fmt.Sprintf("start-%s", controllerName), func(
 		hookContext genericapiserver.PostStartHookContext,

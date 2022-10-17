@@ -41,22 +41,31 @@ type GenericController struct {
 
 	createInstance func() client.Object
 
+	manipulateObjFunc func(obj client.Object)
+
 	Controller
 }
 
-func NewGenericController(ctx context.Context, name string, client dynamic.Interface,
-	gvr schema.GroupVersionResource, informer cache.Informer, cache cache.Cache, createInstance func() client.Object,
+func NewGenericController(ctx context.Context, name string, dynamicClient dynamic.Interface,
+	gvr schema.GroupVersionResource, informer cache.Informer, cache cache.Cache,
+	createInstance func() client.Object, manipulateObjFunc func(obj client.Object),
 ) *GenericController {
 	queue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), name)
+	if manipulateObjFunc == nil {
+		manipulateObjFunc = func(obj client.Object) {
+			// do nothing
+		}
+	}
 	c := &GenericController{
-		context:        ctx,
-		name:           name,
-		client:         client,
-		gvr:            gvr,
-		informer:       informer,
-		queue:          queue,
-		cache:          cache,
-		createInstance: createInstance,
+		context:           ctx,
+		name:              name,
+		client:            dynamicClient,
+		gvr:               gvr,
+		informer:          informer,
+		queue:             queue,
+		cache:             cache,
+		createInstance:    createInstance,
+		manipulateObjFunc: manipulateObjFunc,
 	}
 
 	c.informer.AddEventHandler(
@@ -138,6 +147,8 @@ func (c *GenericController) process(ctx context.Context, key string) error {
 	if err != nil {
 		return err
 	}
+
+	c.manipulateObjFunc(instance)
 
 	klog.V(5).Infof("process object is: %v", instance)
 	err = c.Reconcile(ctx, instance)
