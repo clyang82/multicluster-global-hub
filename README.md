@@ -7,7 +7,7 @@
 
 This document attempts to explain how the different components in multicluster global hub come together to deliver multicluster management at very high scale. The multicluster-global-hub operator is the root operator which pulls in all things needed.
 
-## Conceptual Diagram
+## Conceptual Diagramd
 
 ![ArchitectureDiagram](doc/architecture/multicluster-global-hub-arch.png)
 
