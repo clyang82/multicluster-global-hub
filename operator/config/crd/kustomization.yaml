@@ -3,6 +3,10 @@
 # It should be run by config/default
 resources:
 - bases/operator.open-cluster-management.io_multiclusterglobalhubs.yaml
+- postgres/postgres-operator.crunchydata.com_postgresclusters.yaml
+
+bases:
+- kafka
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

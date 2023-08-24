@@ -1,5 +1,7 @@
 resources:
 - manager.yaml
+- postgres/manager.yaml
+- kafka
 
 generatorOptions:
   disableNameSuffixHash: true
@@ -12,6 +14,9 @@ generatorOptions:
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
+- name: postgres-operator
+  newName: registry.developers.crunchydata.com/crunchydata/postgres-operator
+  newTag: ubi8-5.3.3-0
 - name: quay.io/stolostron/multicluster-global-hub-operator
   newName: quay.io/stolostron/multicluster-global-hub-operator
   newTag: latest

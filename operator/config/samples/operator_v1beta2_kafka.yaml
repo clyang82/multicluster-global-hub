@@ -2,7 +2,7 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: kafka
-  namespace: multicluster-global-hub-kafka
+  namespace: multicluster-global-hub
 spec:
   kafka:
     replicas: 3

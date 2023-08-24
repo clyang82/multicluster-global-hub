@@ -5,6 +5,128 @@ metadata:
     alm-examples: |-
       [
         {
+          "apiVersion": "kafka.strimzi.io/v1beta2",
+          "kind": "Kafka",
+          "metadata": {
+            "name": "kafka",
+            "namespace": "multicluster-global-hub"
+          },
+          "spec": {
+            "entityOperator": {
+              "topicOperator": {},
+              "userOperator": {}
+            },
+            "kafka": {
+              "config": {
+                "auto.create.topics.enable": "false",
+                "inter.broker.protocol.version": 3.3,
+                "log.message.format.version": 3.3,
+                "offsets.topic.replication.factor": 2,
+                "ssl.cipher.suites": "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+                "ssl.enabled.protocols": "TLSv1.2",
+                "ssl.protocol": "TLSv1.2",
+                "transaction.state.log.min.isr": 2,
+                "transaction.state.log.replication.factor": 3
+              },
+              "listeners": [
+                {
+                  "configuration": {
+                    "useServiceDnsDomain": true
+                  },
+                  "name": "plain",
+                  "port": 9092,
+                  "tls": false,
+                  "type": "internal"
+                },
+                {
+                  "authentication": {
+                    "type": "tls"
+                  },
+                  "name": "external",
+                  "port": 9093,
+                  "tls": true,
+                  "type": "route"
+                }
+              ],
+              "livenessProbe": {
+                "initialDelaySeconds": 15,
+                "timeoutSeconds": 5
+              },
+              "logging": {
+                "loggers": {
+                  "kafka.root.logger.level": "INFO"
+                },
+                "type": "inline"
+              },
+              "readinessProbe": {
+                "initialDelaySeconds": 15,
+                "timeoutSeconds": 5
+              },
+              "replicas": 3,
+              "storage": {
+                "type": "jbod",
+                "volumes": [
+                  {
+                    "deleteClaim": false,
+                    "id": 0,
+                    "size": "10Gi",
+                    "type": "persistent-claim"
+                  }
+                ]
+              },
+              "version": "3.3.2"
+            },
+            "zookeeper": {
+              "logging": {
+                "loggers": {
+                  "zookeeper.root.logger": "INFO"
+                },
+                "type": "inline"
+              },
+              "replicas": 3,
+              "storage": {
+                "deleteClaim": false,
+                "size": "10Gi",
+                "type": "persistent-claim"
+              }
+            }
+          }
+        },
+        {
+          "apiVersion": "kafka.strimzi.io/v1beta2",
+          "kind": "KafkaTopic",
+          "metadata": {
+            "labels": {
+              "strimzi.io/cluster": "kafka"
+            },
+            "name": "spec",
+            "namespace": "multicluster-global-hub"
+          },
+          "spec": {
+            "config": {
+              "cleanup.policy": "compact"
+            },
+            "partitions": 1,
+            "replicas": 2
+          }
+        },
+        {
+          "apiVersion": "kafka.strimzi.io/v1beta2",
+          "kind": "KafkaUser",
+          "metadata": {
+            "labels": {
+              "strimzi.io/cluster": "kafka"
+            },
+            "name": "global-hub-kafka-user",
+            "namespace": "multicluster-global-hub"
+          },
+          "spec": {
+            "authentication": {
+              "type": "tls"
+            }
+          }
+        },
+        {
           "apiVersion": "operator.open-cluster-management.io/v1alpha4",
           "kind": "MulticlusterGlobalHub",
           "metadata": {
@@ -20,16 +142,101 @@ metadata:
               }
             }
           }
+        },
+        {
+          "apiVersion": "postgres-operator.crunchydata.com/v1beta1",
+          "kind": "PostgresCluster",
+          "metadata": {
+            "name": "cluster",
+            "namespace": "multicluster-global-hub"
+          },
+          "spec": {
+            "backups": {
+              "pgbackrest": {
+                "repos": [
+                  {
+                    "name": "repo1",
+                    "volume": {
+                      "volumeClaimSpec": {
+                        "accessModes": [
+                          "ReadWriteOnce"
+                        ],
+                        "resources": {
+                          "requests": {
+                            "storage": "1Gi"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "instances": [
+              {
+                "affinity": {
+                  "podAntiAffinity": {
+                    "preferredDuringSchedulingIgnoredDuringExecution": [
+                      {
+                        "podAffinityTerm": {
+                          "labelSelector": {
+                            "matchLabels": {
+                              "postgres-operator.crunchydata.com/cluster": "cluster",
+                              "postgres-operator.crunchydata.com/instance-set": "pgha1"
+                            }
+                          },
+                          "topologyKey": "kubernetes.io/hostname"
+                        },
+                        "weight": 1
+                      }
+                    ]
+                  }
+                },
+                "dataVolumeClaimSpec": {
+                  "accessModes": [
+                    "ReadWriteOnce"
+                  ],
+                  "resources": {
+                    "requests": {
+                      "storage": "20Gi"
+                    }
+                  }
+                },
+                "name": "pgha1",
+                "replicas": 3
+              }
+            ],
+            "postgresVersion": 14,
+            "users": [
+              {
+                "databases": [
+                  "hoh"
+                ],
+                "name": "postgres"
+              },
+              {
+                "databases": [
+                  "hoh"
+                ],
+                "name": "guest",
+                "options": "LOGIN"
+              }
+            ]
+          }
         }
       ]
     capabilities: Seamless Upgrades
     categories: Integration & Delivery,OpenShift Optional
     certified: "false"
     containerImage: quay.io/stolostron/multicluster-global-hub-operator:latest
-    createdAt: "2023-08-14T01:39:03Z"
+    createdAt: "2023-08-24T09:15:15Z"
     description: Manages the installation and upgrade of the Multicluster Global Hub.
-    operatorframework.io/suggested-namespace: open-cluster-management
-    operators.operatorframework.io/builder: operator-sdk-v1.28.0+git
+    operatorframework.io/suggested-namespace: multicluster-global-hub
+    operators.operatorframework.io/builder: operator-sdk-v1.31.0
+    operators.operatorframework.io/internal-objects: '["strimzipodsets.core.strimzi.io",
+      "kafkabridges.kafka.strimzi.io", "kafkaconnectors.kafka.strimzi.io", "kafkaconnects.kafka.strimzi.io",
+      "kafkamirrormaker2s.kafka.strimzi.io", "kafkamirrormakers.kafka.strimzi.io",
+      "kafkarebalances.kafka.strimzi.io"]'
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/stolostron/multicluster-global-hub
     support: Red Hat
@@ -39,9 +246,42 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - kind: KafkaBridge
+      name: kafkabridges.kafka.strimzi.io
+      version: v1beta2
+    - kind: KafkaConnector
+      name: kafkaconnectors.kafka.strimzi.io
+      version: v1beta2
+    - kind: KafkaConnect
+      name: kafkaconnects.kafka.strimzi.io
+      version: v1beta2
+    - kind: KafkaMirrorMaker2
+      name: kafkamirrormaker2s.kafka.strimzi.io
+      version: v1beta2
+    - kind: KafkaMirrorMaker
+      name: kafkamirrormakers.kafka.strimzi.io
+      version: v1beta2
+    - kind: KafkaRebalance
+      name: kafkarebalances.kafka.strimzi.io
+      version: v1beta2
+    - kind: Kafka
+      name: kafkas.kafka.strimzi.io
+      version: v1beta2
+    - kind: KafkaTopic
+      name: kafkatopics.kafka.strimzi.io
+      version: v1beta2
+    - kind: KafkaUser
+      name: kafkausers.kafka.strimzi.io
+      version: v1beta2
     - kind: MulticlusterGlobalHub
       name: multiclusterglobalhubs.operator.open-cluster-management.io
       version: v1alpha4
+    - kind: PostgresCluster
+      name: postgresclusters.postgres-operator.crunchydata.com
+      version: v1beta1
+    - kind: StrimziPodSet
+      name: strimzipodsets.core.strimzi.io
+      version: v1beta2
   description: "Multicluster Global Hub Operator defines the configuration for multicluster
     global hub installation and upgrade with one custom resource.\n\n## Prerequisites\n\n-
     Red Hat Advanced Cluster Management for Kubernetes (RHACM) 2.7 or later needs
@@ -635,6 +875,173 @@ spec:
           - update
           - watch
         serviceAccountName: multicluster-global-hub-operator
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          - persistentvolumeclaims
+          - secrets
+          - services
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - endpoints
+          verbs:
+          - create
+          - delete
+          - deletecollection
+          - get
+          - list
+          - patch
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - endpoints/restricted
+          - pods/exec
+          verbs:
+          - create
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          verbs:
+          - delete
+          - get
+          - list
+          - patch
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts
+          verbs:
+          - create
+          - get
+          - list
+          - patch
+          - watch
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          - statefulsets
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - watch
+        - apiGroups:
+          - batch
+          resources:
+          - cronjobs
+          - jobs
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - watch
+        - apiGroups:
+          - policy
+          resources:
+          - poddisruptionbudgets
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - watch
+        - apiGroups:
+          - postgres-operator.crunchydata.com
+          resources:
+          - postgresclusters
+          verbs:
+          - get
+          - list
+          - patch
+          - watch
+        - apiGroups:
+          - postgres-operator.crunchydata.com
+          resources:
+          - postgresclusters/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - postgres-operator.crunchydata.com
+          resources:
+          - postgresclusters/status
+          verbs:
+          - patch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - rolebindings
+          - roles
+          verbs:
+          - create
+          - get
+          - list
+          - patch
+          - watch
+        serviceAccountName: pgo
+      - rules:
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - clusterrolebindings
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - storage.k8s.io
+          resources:
+          - storageclasses
+          verbs:
+          - get
+        - apiGroups:
+          - ""
+          resources:
+          - nodes
+          verbs:
+          - list
+        - apiGroups:
+          - ""
+          resources:
+          - nodes
+          verbs:
+          - get
+        - apiGroups:
+          - ""
+          resources:
+          - nodes
+          verbs:
+          - get
+        serviceAccountName: strimzi-cluster-operator
       deployments:
       - label:
           name: multicluster-global-hub-operator
@@ -697,6 +1104,164 @@ spec:
                 runAsNonRoot: true
               serviceAccountName: multicluster-global-hub-operator
               terminationGracePeriodSeconds: 10
+      - label:
+          app: postgres-operator
+        name: pgo
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: postgres-operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                app: postgres-operator
+            spec:
+              containers:
+              - image: registry.developers.crunchydata.com/crunchydata/postgres-operator:ubi8-5.3.3-0
+                name: operator
+                resources: {}
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true
+                  runAsNonRoot: true
+              serviceAccountName: pgo
+      - label:
+          app: strimzi
+        name: strimzi-cluster-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: strimzi-cluster-operator
+              strimzi.io/kind: cluster-operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                name: strimzi-cluster-operator
+                strimzi.io/kind: cluster-operator
+            spec:
+              containers:
+              - args:
+                - /opt/strimzi/bin/cluster_operator_run.sh
+                env:
+                - name: STRIMZI_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: STRIMZI_FULL_RECONCILIATION_INTERVAL_MS
+                  value: "120000"
+                - name: STRIMZI_OPERATION_TIMEOUT_MS
+                  value: "300000"
+                - name: STRIMZI_DEFAULT_TLS_SIDECAR_ENTITY_OPERATOR_IMAGE
+                  value: quay.io/strimzi/kafka:0.33.2-kafka-3.4.0
+                - name: STRIMZI_DEFAULT_KAFKA_EXPORTER_IMAGE
+                  value: quay.io/strimzi/kafka:0.33.2-kafka-3.4.0
+                - name: STRIMZI_DEFAULT_CRUISE_CONTROL_IMAGE
+                  value: quay.io/strimzi/kafka:0.33.2-kafka-3.4.0
+                - name: STRIMZI_KAFKA_IMAGES
+                  value: |
+                    3.2.0=quay.io/strimzi/kafka:0.33.2-kafka-3.2.0
+                    3.2.1=quay.io/strimzi/kafka:0.33.2-kafka-3.2.1
+                    3.2.3=quay.io/strimzi/kafka:0.33.2-kafka-3.2.3
+                    3.3.1=quay.io/strimzi/kafka:0.33.2-kafka-3.3.1
+                    3.3.2=quay.io/strimzi/kafka:0.33.2-kafka-3.3.2
+                    3.4.0=quay.io/strimzi/kafka:0.33.2-kafka-3.4.0
+                - name: STRIMZI_KAFKA_CONNECT_IMAGES
+                  value: |
+                    3.2.0=quay.io/strimzi/kafka:0.33.2-kafka-3.2.0
+                    3.2.1=quay.io/strimzi/kafka:0.33.2-kafka-3.2.1
+                    3.2.3=quay.io/strimzi/kafka:0.33.2-kafka-3.2.3
+                    3.3.1=quay.io/strimzi/kafka:0.33.2-kafka-3.3.1
+                    3.3.2=quay.io/strimzi/kafka:0.33.2-kafka-3.3.2
+                    3.4.0=quay.io/strimzi/kafka:0.33.2-kafka-3.4.0
+                - name: STRIMZI_KAFKA_MIRROR_MAKER_IMAGES
+                  value: |
+                    3.2.0=quay.io/strimzi/kafka:0.33.2-kafka-3.2.0
+                    3.2.1=quay.io/strimzi/kafka:0.33.2-kafka-3.2.1
+                    3.2.3=quay.io/strimzi/kafka:0.33.2-kafka-3.2.3
+                    3.3.1=quay.io/strimzi/kafka:0.33.2-kafka-3.3.1
+                    3.3.2=quay.io/strimzi/kafka:0.33.2-kafka-3.3.2
+                    3.4.0=quay.io/strimzi/kafka:0.33.2-kafka-3.4.0
+                - name: STRIMZI_KAFKA_MIRROR_MAKER_2_IMAGES
+                  value: |
+                    3.2.0=quay.io/strimzi/kafka:0.33.2-kafka-3.2.0
+                    3.2.1=quay.io/strimzi/kafka:0.33.2-kafka-3.2.1
+                    3.2.3=quay.io/strimzi/kafka:0.33.2-kafka-3.2.3
+                    3.3.1=quay.io/strimzi/kafka:0.33.2-kafka-3.3.1
+                    3.3.2=quay.io/strimzi/kafka:0.33.2-kafka-3.3.2
+                    3.4.0=quay.io/strimzi/kafka:0.33.2-kafka-3.4.0
+                - name: STRIMZI_DEFAULT_TOPIC_OPERATOR_IMAGE
+                  value: quay.io/strimzi/operator:0.33.2
+                - name: STRIMZI_DEFAULT_USER_OPERATOR_IMAGE
+                  value: quay.io/strimzi/operator:0.33.2
+                - name: STRIMZI_DEFAULT_KAFKA_INIT_IMAGE
+                  value: quay.io/strimzi/operator:0.33.2
+                - name: STRIMZI_DEFAULT_KAFKA_BRIDGE_IMAGE
+                  value: quay.io/strimzi/kafka-bridge:0.24.0
+                - name: STRIMZI_DEFAULT_JMXTRANS_IMAGE
+                  value: quay.io/strimzi/jmxtrans:0.33.2
+                - name: STRIMZI_DEFAULT_KANIKO_EXECUTOR_IMAGE
+                  value: quay.io/strimzi/kaniko-executor:0.33.2
+                - name: STRIMZI_DEFAULT_MAVEN_BUILDER
+                  value: quay.io/strimzi/maven-builder:0.33.2
+                - name: STRIMZI_OPERATOR_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: STRIMZI_FEATURE_GATES
+                - name: STRIMZI_LEADER_ELECTION_ENABLED
+                  value: "true"
+                - name: STRIMZI_LEADER_ELECTION_LEASE_NAME
+                  value: strimzi-cluster-operator
+                - name: STRIMZI_LEADER_ELECTION_LEASE_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: STRIMZI_LEADER_ELECTION_IDENTITY
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                image: quay.io/strimzi/operator:0.33.2
+                livenessProbe:
+                  httpGet:
+                    path: /healthy
+                    port: http
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                name: strimzi-cluster-operator
+                ports:
+                - containerPort: 8080
+                  name: http
+                readinessProbe:
+                  httpGet:
+                    path: /ready
+                    port: http
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                resources:
+                  limits:
+                    cpu: "1"
+                    memory: 384Mi
+                  requests:
+                    cpu: 200m
+                    memory: 384Mi
+                volumeMounts:
+                - mountPath: /tmp
+                  name: strimzi-tmp
+                - mountPath: /opt/strimzi/custom-config/
+                  name: co-config-volume
+              serviceAccountName: strimzi-cluster-operator
+              volumes:
+              - emptyDir:
+                  medium: Memory
+                  sizeLimit: 1Mi
+                name: strimzi-tmp
+              - configMap:
+                  name: strimzi-cluster-operator
+                name: co-config-volume
       permissions:
       - rules:
         - apiGroups:
@@ -789,6 +1354,228 @@ spec:
           - update
           - delete
         serviceAccountName: multicluster-global-hub-operator
+      - rules:
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - rolebindings
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - roles
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          - serviceaccounts
+          - configmaps
+          - services
+          - endpoints
+          - secrets
+          - persistentvolumeclaims
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          - deployments/scale
+          - deployments/status
+          - statefulsets
+          - replicasets
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - ""
+          - events.k8s.io
+          resources:
+          - events
+          verbs:
+          - create
+        - apiGroups:
+          - build.openshift.io
+          resources:
+          - buildconfigs
+          - buildconfigs/instantiate
+          - builds
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - networking.k8s.io
+          resources:
+          - networkpolicies
+          - ingresses
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          - routes/custom-host
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - image.openshift.io
+          resources:
+          - imagestreams
+          verbs:
+          - get
+        - apiGroups:
+          - policy
+          resources:
+          - poddisruptionbudgets
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - kafka.strimzi.io
+          resources:
+          - kafkatopics
+          - kafkatopics/status
+          - kafkausers
+          - kafkausers/status
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - patch
+          - update
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - create
+        - apiGroups:
+          - coordination.k8s.io
+          resourceNames:
+          - strimzi-cluster-operator
+          resources:
+          - leases
+          verbs:
+          - get
+          - list
+          - watch
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          verbs:
+          - watch
+          - list
+        - apiGroups:
+          - kafka.strimzi.io
+          resources:
+          - kafkas
+          - kafkas/status
+          - kafkaconnects
+          - kafkaconnects/status
+          - kafkaconnectors
+          - kafkaconnectors/status
+          - kafkamirrormakers
+          - kafkamirrormakers/status
+          - kafkabridges
+          - kafkabridges/status
+          - kafkamirrormaker2s
+          - kafkamirrormaker2s/status
+          - kafkarebalances
+          - kafkarebalances/status
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        - apiGroups:
+          - core.strimzi.io
+          resources:
+          - strimzipodsets
+          - strimzipodsets/status
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - patch
+          - update
+        serviceAccountName: strimzi-cluster-operator
     strategy: deployment
   installModes:
   - supported: true

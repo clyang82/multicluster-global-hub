@@ -1,0 +1,6 @@
+apiVersion: v1
+data:
+  DisableAutofail: "false"
+kind: ConfigMap
+metadata:
+  name: pgo-config

@@ -1,4 +1,7 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
 - operator_v1alpha4_multiclusterglobalhub.yaml
-#+kubebuilder:scaffold:manifestskustomizesamples
+- operator_v1beta1_postgrescluster.yaml
+- operator_v1beta2_kafkatopic.yaml
+- operator_v1beta2_kafka.yaml
+- operator_v1beta2_kafkauser.yaml
