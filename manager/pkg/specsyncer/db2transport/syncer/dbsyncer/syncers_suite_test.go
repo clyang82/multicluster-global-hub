@@ -21,7 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/config"
-	"github.com/stolostron/multicluster-global-hub/manager/pkg/nonk8sapi"
 	managerscheme "github.com/stolostron/multicluster-global-hub/manager/pkg/scheme"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/specsyncer/db2transport/db/postgresql"
 	specsycner "github.com/stolostron/multicluster-global-hub/manager/pkg/specsyncer/db2transport/syncer"
@@ -101,9 +100,8 @@ var _ = BeforeSuite(func() {
 			TransportType:     string(transport.Chan),
 			CommitterInterval: 10 * time.Second,
 		},
-		StatisticsConfig:      &statistics.StatisticsConfig{},
-		NonK8sAPIServerConfig: &nonk8sapi.NonK8sAPIServerConfig{},
-		ElectionConfig:        &commonobjects.LeaderElectionConfig{},
+		StatisticsConfig: &statistics.StatisticsConfig{},
+		ElectionConfig:   &commonobjects.LeaderElectionConfig{},
 	}
 
 	Expect(specsycner.AddDB2TransportSyncers(mgr, transportPostgreSQL, managerConfig)).Should(Succeed())

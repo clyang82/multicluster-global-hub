@@ -15,10 +15,8 @@ import (
 	"github.com/go-logr/logr"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/stolostron/multicluster-global-hub/manager/pkg/nonk8sapi/authentication"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/nonk8sapi/managedclusters"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/nonk8sapi/policies"
-	"github.com/stolostron/multicluster-global-hub/manager/pkg/nonk8sapi/subscriptions"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/specsyncer/db2transport/db"
 )
 
@@ -69,9 +67,8 @@ func AddNonK8sApiServer(mgr ctrl.Manager, database db.DB, nonK8sAPIServerConfig 
 	err = mgr.Add(&nonK8sApiServer{
 		log: ctrl.Log.WithName("non-k8s-api-server"),
 		svr: &http.Server{
-			Addr:              ":8080",
-			Handler:           router,
-			ReadHeaderTimeout: time.Minute * 1,
+			Addr:    ":8080",
+			Handler: router,
 		},
 	})
 	if err != nil {
@@ -100,25 +97,12 @@ func AddNonK8sApiServer(mgr ctrl.Manager, database db.DB, nonK8sAPIServerConfig 
 // @description					Authorization with user access token
 func SetupRouter(database db.DB, nonK8sAPIServerConfig *NonK8sAPIServerConfig) (*gin.Engine, error) {
 	router := gin.Default()
-	// add aythentication eith openshift oauth
-	// skip authentication middleware if ClusterAPIURL is empty for testing
-	if nonK8sAPIServerConfig.ClusterAPIURL != "" {
-		clusterAPICABundle, err := readCertificateAuthority(nonK8sAPIServerConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read certificates authority: %w", err)
-		}
-		router.Use(authentication.Authentication(nonK8sAPIServerConfig.ClusterAPIURL, clusterAPICABundle))
-	}
 
 	routerGroup := router.Group(nonK8sAPIServerConfig.ServerBasePath)
 	routerGroup.GET("/managedclusters", managedclusters.ListManagedClusters(database.GetConn()))
 	routerGroup.PATCH("/managedcluster/:clusterID",
 		managedclusters.PatchManagedCluster(database.GetConn()))
-	routerGroup.GET("/policies", policies.ListPolicies(database.GetConn()))
 	routerGroup.GET("/policy/:policyID/status", policies.GetPolicyStatus(database.GetConn()))
-	routerGroup.GET("/subscriptions", subscriptions.ListSubscriptions(database.GetConn()))
-	routerGroup.GET("/subscriptionreport/:subscriptionID",
-		subscriptions.GetSubscriptionReport(database.GetConn()))
 
 	return router, nil
 }

@@ -17,7 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	policyv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/nonk8sapi/util"
 )
@@ -172,35 +171,4 @@ func handlePolicy(ginCtx *gin.Context, dbConnectionPool *pgxpool.Pool, policyID,
 	}
 
 	ginCtx.JSON(http.StatusOK, unstrPolicy)
-}
-
-func queryPolicyStatus(dbConnectionPool *pgxpool.Pool, policyID, policyQuery, policyMappingQuery,
-	policyComplianceQuery string,
-) (*unstructured.Unstructured, error) {
-	var err error
-	policy := &policyv1.Policy{}
-
-	policyMatches, err = getPolicyMatches(dbConnectionPool, policyMappingQuery)
-	if err != nil {
-		fmt.Fprintf(gin.DefaultWriter, QueryPolicyMappingFailureFormatMsg, err)
-		return &unstructured.Unstructured{}, err
-	}
-
-	err = dbConnectionPool.QueryRow(context.TODO(), policyQuery, policyID).Scan(policy)
-	if err != nil {
-		fmt.Fprintf(gin.DefaultWriter, QueryPolicyFailureFormatMsg, err)
-		return &unstructured.Unstructured{}, err
-	}
-
-	compliancePerClusterStatuses, hasNonCompliantClusters, err := getComplianceStatus(dbConnectionPool,
-		policyComplianceQuery, policyID)
-	if err != nil {
-		fmt.Fprintf(gin.DefaultWriter, QueryPolicyComplianceFailureFormatMsg, err)
-		return &unstructured.Unstructured{}, err
-	}
-
-	unstrPolicy, err := assemblePolicyStatus(policy, policyMatches,
-		compliancePerClusterStatuses, hasNonCompliantClusters)
-
-	return &unstrPolicy, err
 }

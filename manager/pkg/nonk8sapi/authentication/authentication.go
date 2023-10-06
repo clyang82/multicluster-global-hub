@@ -51,6 +51,7 @@ func createClient(clusterAPICABundle []byte) (*http.Client, error) {
 	tlsConfig := &tls.Config{
 		//nolint:gosec
 		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS12,
 	}
 
 	if clusterAPICABundle != nil {

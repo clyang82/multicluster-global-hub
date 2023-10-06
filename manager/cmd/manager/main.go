@@ -24,7 +24,6 @@ import (
 	managerconfig "github.com/stolostron/multicluster-global-hub/manager/pkg/config"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/cronjob"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/eventcollector"
-	"github.com/stolostron/multicluster-global-hub/manager/pkg/nonk8sapi"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/scheme"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/specsyncer"
 	"github.com/stolostron/multicluster-global-hub/manager/pkg/specsyncer/db2transport/db/postgresql"
@@ -66,9 +65,8 @@ func parseFlags() *managerconfig.ManagerConfig {
 				ConsumerConfig: &transport.KafkaConsumerConfig{},
 			},
 		},
-		StatisticsConfig:      &statistics.StatisticsConfig{},
-		NonK8sAPIServerConfig: &nonk8sapi.NonK8sAPIServerConfig{},
-		ElectionConfig:        &commonobjects.LeaderElectionConfig{},
+		StatisticsConfig: &statistics.StatisticsConfig{},
+		ElectionConfig:   &commonobjects.LeaderElectionConfig{},
 	}
 
 	// add zap flags
@@ -127,12 +125,6 @@ func parseFlags() *managerconfig.ManagerConfig {
 		"kafka-consumer-topic", "status", "Topic for the kafka consumer.")
 	pflag.StringVar(&managerConfig.StatisticsConfig.LogInterval, "statistics-log-interval", "1m",
 		"The log interval for statistics.")
-	pflag.StringVar(&managerConfig.NonK8sAPIServerConfig.ClusterAPIURL, "cluster-api-url",
-		"https://kubernetes.default.svc:443", "The cluster API URL for nonK8s API server.")
-	pflag.StringVar(&managerConfig.NonK8sAPIServerConfig.ClusterAPICABundlePath, "cluster-api-cabundle-path",
-		"/var/run/secrets/kubernetes.io/serviceaccount/ca.crt", "The CA bundle path for cluster API.")
-	pflag.StringVar(&managerConfig.NonK8sAPIServerConfig.ServerBasePath, "server-base-path",
-		"/global-hub-api/v1", "The base path for nonK8s API server.")
 	pflag.IntVar(&managerConfig.ElectionConfig.LeaseDuration, "lease-duration", 137, "controller leader lease duration")
 	pflag.IntVar(&managerConfig.ElectionConfig.RenewDeadline, "renew-deadline", 107, "controller leader renew deadline")
 	pflag.IntVar(&managerConfig.ElectionConfig.RetryPeriod, "retry-period", 26, "controller leader retry period")
@@ -211,11 +203,6 @@ func createManager(ctx context.Context, restConfig *rest.Config, managerConfig *
 
 	if err := scheme.AddToScheme(mgr.GetScheme()); err != nil {
 		return nil, fmt.Errorf("failed to add schemes: %w", err)
-	}
-
-	if err := nonk8sapi.AddNonK8sApiServer(mgr, processPostgreSQL,
-		managerConfig.NonK8sAPIServerConfig); err != nil {
-		return nil, fmt.Errorf("failed to add non-k8s-api-server: %w", err)
 	}
 
 	if managerConfig.EnableGlobalResource {
