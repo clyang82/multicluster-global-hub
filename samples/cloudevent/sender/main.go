@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -15,7 +16,7 @@ import (
 )
 
 const (
-	counts = 100
+	counts = 1000
 )
 
 func main() {
@@ -26,7 +27,7 @@ func main() {
 	saramaConfig.Producer.Return.Successes = true
 	saramaConfig.Producer.MaxMessageBytes = 1024 * 1000 // 1024KB
 	for i := 0; i <= counts; i++ {
-		go sender(bootstrapServer, fmt.Sprintf("mytopic-%d", i), saramaConfig)
+		go sender(bootstrapServer, fmt.Sprintf("mytopic-%d", rand.Intn(10000)), saramaConfig)
 	}
 	time.Sleep(30 * time.Minute)
 }
@@ -61,7 +62,7 @@ func sender(bootstrapServer, topic string, saramaConfig *sarama.Config) {
 			log.Printf("failed to send: %v", result)
 			return false, nil
 		} else {
-			log.Printf("accepted: %t", cloudevents.IsACK(result))
+			log.Printf("topic: %s, accepted: %t", topic, cloudevents.IsACK(result))
 			return false, nil
 		}
 

@@ -23,9 +23,9 @@ func main() {
 	a, err := kafka.NewAdminClient(&kafka.ConfigMap{
 		"bootstrap.servers":        bootstrapServer,
 		"security.protocol":        "SSL",
-		"ssl.ca.location":          "ca.crt",
-		"ssl.certificate.location": "client.crt",
-		"ssl.key.location":         "client.key",
+		"ssl.ca.location":          "/tmp/ca.crt",
+		"ssl.certificate.location": "/tmp/client.crt",
+		"ssl.key.location":         "/tmp/client.key",
 	})
 	if err != nil {
 		log.Fatalf("failed to create admin client: %s", err.Error())
