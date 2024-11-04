@@ -392,6 +392,5 @@ func GetAllManagedHubNames(ctx context.Context, c client.Client) ([]string, erro
 
 func filterManagedCluster(obj client.Object) bool {
 	return obj.GetLabels()["vendor"] != "OpenShift" ||
-		obj.GetLabels()["openshiftVersion"] == "3" ||
-		obj.GetName() == constants.LocalClusterName
+		obj.GetLabels()["openshiftVersion"] == "3"
 }
