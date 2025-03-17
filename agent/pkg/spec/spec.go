@@ -47,8 +47,11 @@ func AddToManager(context context.Context, mgr ctrl.Manager, transportClient tra
 			syncers.NewManagedClusterLabelSyncer(workers))
 	}
 
-	dispatcher.RegisterSyncer(constants.CloudEventTypeMigrationFrom,
-		syncers.NewManagedClusterMigrationFromSyncer(mgr.GetClient(), transportClient))
+	fromSyncer, err := syncers.NewManagedClusterMigrationFromSyncer(mgr.GetClient(), transportClient)
+	if err != nil {
+		return fmt.Errorf("failed to create a syncer for migration: %w", err)
+	}
+	dispatcher.RegisterSyncer(constants.CloudEventTypeMigrationFrom, fromSyncer)
 	dispatcher.RegisterSyncer(constants.CloudEventTypeMigrationTo,
 		syncers.NewManagedClusterMigrationToSyncer(mgr.GetClient()))
 	dispatcher.RegisterSyncer(constants.ResyncMsgKey, syncers.NewResyncer())

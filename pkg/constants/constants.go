@@ -198,6 +198,9 @@ const (
 	CloudEventTypeMigrationTo = "io.open-cluster-management.operator.multiclusterglobalhubs.spec.migration.to"
 	// LabelKeyIsManagedServiceAccount is from     managed-serviceaccount/pkg/common/constants.go
 	LabelKeyIsManagedServiceAccount = "authentication.open-cluster-management.io/is-managed-serviceaccount"
+	// MigrationFromServiceAccountName is used to generate bootstrap kubeconfig for the current hub cluster.
+	// It is created in the global hub agent namespace
+	MigrationFromServiceAccountName = "migration-from"
 )
 
 const (
