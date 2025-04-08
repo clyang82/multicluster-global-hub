@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	kafkav1beta2 "github.com/RedHatInsights/strimzi-client-go/apis/kafka.strimzi.io/v1beta2"
 	addonv1 "github.com/stolostron/klusterlet-addon-controller/pkg/apis/agent/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	migrationv1alpha1 "github.com/stolostron/multicluster-global-hub/operator/api/migration/v1alpha1"
+	"github.com/stolostron/multicluster-global-hub/operator/pkg/config"
 	bundleevent "github.com/stolostron/multicluster-global-hub/pkg/bundle/event"
 	"github.com/stolostron/multicluster-global-hub/pkg/constants"
 	"github.com/stolostron/multicluster-global-hub/pkg/database"
@@ -37,7 +39,8 @@ const (
 var migrationStageTimeout = 5 * time.Minute
 
 // Initializing:
-//  1. Source Hub: sync the required clusters to databases
+//  1. Grant the proper permission to the source clusters and the target cluster for the migration topic.
+//  2. Send the event to the source clusters and the target cluster to create producer and consumer for the migration topic.
 //  2. Destination Hub: create managedserviceaccount, Set autoApprove for the SA
 func (m *ClusterMigrationController) initializing(ctx context.Context,
 	mcm *migrationv1alpha1.ManagedClusterMigration,
@@ -96,6 +99,11 @@ func (m *ClusterMigrationController) initializing(ctx context.Context,
 		return false, err
 	}
 
+	// ensure grant the proper permission to the KafkaUser for the gh-migration topic
+	if err := m.ensurePermission(ctx, sourceHubToClusters, mcm.Spec.To); err != nil {
+		return false, err
+	}
+
 	// From Hub
 	// send the migration event to migration.from managed hub(s)
 	initializingClusters := []string{}
@@ -143,6 +151,71 @@ func (m *ClusterMigrationController) initializing(ctx context.Context,
 
 	log.Info("migration klusterletconfigs have been synced into the database")
 	return false, nil
+}
+
+func (m *ClusterMigrationController) ensurePermission(ctx context.Context,
+	sourceHubToClusters map[string][]string, toHub string) error {
+	for fromHubName := range sourceHubToClusters {
+		// Get the KafkaUser
+		kafkaUser := &kafkav1beta2.KafkaUser{}
+		err := m.Client.Get(ctx, types.NamespacedName{
+			Name:      config.GetKafkaUserName(fromHubName),
+			Namespace: utils.GetDefaultNamespace(),
+		}, kafkaUser)
+		if err != nil {
+			return err
+		}
+
+		migrationACL := utils.WriteTopicACL(m.migrationTopic)
+		found := false
+		for _, existingAcl := range kafkaUser.Spec.Authorization.Acls {
+			if utils.GenerateACLKey(existingAcl) == utils.GenerateACLKey(migrationACL) {
+				found = true
+				continue
+			}
+		}
+		if !found {
+			// Patch the gh-migration Permission
+			kafkaUser.Spec.Authorization.Acls = append(kafkaUser.Spec.Authorization.Acls,
+				[]kafkav1beta2.KafkaUserSpecAuthorizationAclsElem{
+					migrationACL,
+				}...,
+			)
+			if err := m.Client.Update(ctx, kafkaUser); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Get the KafkaUser
+	kafkaUser := &kafkav1beta2.KafkaUser{}
+	err := m.Client.Get(ctx, types.NamespacedName{
+		Name:      config.GetKafkaUserName(toHub),
+		Namespace: utils.GetDefaultNamespace(),
+	}, kafkaUser)
+	if err != nil {
+		return err
+	}
+	migrationACL := utils.ReadTopicACL(m.migrationTopic, false)
+	found := false
+	for _, existingAcl := range kafkaUser.Spec.Authorization.Acls {
+		if utils.GenerateACLKey(existingAcl) == utils.GenerateACLKey(migrationACL) {
+			found = true
+			continue
+		}
+	}
+	if !found {
+		// Patch the gh-migration Permission
+		kafkaUser.Spec.Authorization.Acls = append(kafkaUser.Spec.Authorization.Acls,
+			[]kafkav1beta2.KafkaUserSpecAuthorizationAclsElem{
+				migrationACL,
+			}...,
+		)
+		if err := m.Client.Update(ctx, kafkaUser); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // update with conflict error, and also add timeout validating in the conditions

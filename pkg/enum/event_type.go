@@ -8,6 +8,7 @@ const (
 	HubClusterInfoType        EventType = EventTypePrefix + "managedhub.info"
 	HubClusterHeartbeatType   EventType = EventTypePrefix + "managedhub.heartbeat"
 	KlusterletAddonConfigType EventType = EventTypePrefix + "managedcluster.klusterletaddonconfig"
+	MigrationResourcesType    EventType = EventTypePrefix + "migration.resources"
 	ManagedClusterType        EventType = EventTypePrefix + "managedcluster"
 	ManagedClusterInfoType    EventType = EventTypePrefix + "managedclusterinfo"
 	SubscriptionReportType    EventType = EventTypePrefix + "subscription.report"

@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	operatorv1 "open-cluster-management.io/api/operator/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/stolostron/multicluster-global-hub/agent/pkg/configs"
 	bundleevent "github.com/stolostron/multicluster-global-hub/pkg/bundle/event"
@@ -26,27 +27,59 @@ import (
 	"github.com/stolostron/multicluster-global-hub/pkg/enum"
 	"github.com/stolostron/multicluster-global-hub/pkg/logger"
 	"github.com/stolostron/multicluster-global-hub/pkg/transport"
+	"github.com/stolostron/multicluster-global-hub/pkg/transport/consumer"
 )
 
 type managedClusterMigrationToSyncer struct {
-	log             *zap.SugaredLogger
-	client          client.Client
-	transportClient transport.TransportClient
-	bundleVersion   *eventversion.Version
+	log               *zap.SugaredLogger
+	client            client.Client
+	transportClient   transport.TransportClient
+	transportConfig   *transport.TransportInternalConfig
+	migrationConsumer *consumer.GenericConsumer
+	bundleVersion     *eventversion.Version
 }
 
 func NewManagedClusterMigrationToSyncer(client client.Client,
-	transportClient transport.TransportClient,
+	transportClient transport.TransportClient, transportConfig *transport.TransportInternalConfig,
 ) *managedClusterMigrationToSyncer {
 	return &managedClusterMigrationToSyncer{
 		log:             logger.DefaultZapLogger(),
 		client:          client,
 		transportClient: transportClient,
+		transportConfig: transportConfig,
 		bundleVersion:   eventversion.NewVersion(),
 	}
 }
 
 func (s *managedClusterMigrationToSyncer) Sync(ctx context.Context, payload []byte) error {
+	// initialize the gh-migration producer
+	if s.migrationConsumer == nil && s.transportConfig != nil {
+		var err error
+		s.migrationConsumer, err =
+			consumer.NewGenericConsumer(s.transportConfig, []string{s.transportConfig.KafkaCredential.MigrationTopic})
+		if err != nil {
+			return err
+		}
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case evt := <-s.migrationConsumer.EventChan():
+					s.log.Debugf("get event: %v", evt.Type())
+					if err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+						s.log.Debug("sync data: %v", evt.Data())
+						if err := s.syncMigrationResources(ctx, evt.Data()); err != nil {
+							return err
+						}
+						return nil
+					}); err != nil {
+						s.log.Errorw("sync failed", "type", evt.Type(), "error", err)
+					}
+				}
+			}
+		}()
+	}
 	// handle migration.to cloud event
 	s.log.Info("received cloudevent from the global hub")
 	managedClusterMigrationToEvent := &bundleevent.ManagedClusterMigrationToEvent{}
@@ -106,6 +139,30 @@ func (s *managedClusterMigrationToSyncer) Sync(ctx context.Context, payload []by
 		}
 	}
 
+	return nil
+}
+
+func (s *managedClusterMigrationToSyncer) syncMigrationResources(ctx context.Context,
+	payload []byte) error {
+	s.log.Info("received cloudevent from the source clusters")
+	migrationResources := &bundleevent.SourceClusterMigrationResources{}
+	if err := json.Unmarshal(payload, migrationResources); err != nil {
+		return err
+	}
+	for _, mc := range migrationResources.ManagedClusters {
+		if _, err := controllerutil.CreateOrUpdate(ctx, s.client, &mc, nil); err != nil {
+			s.log.Debugf("managed cluster is %v", mc)
+			s.log.Errorf("failed to create or update the managed cluster %s", mc.Name)
+			return err
+		}
+	}
+	for _, config := range migrationResources.KlusterletAddonConfig {
+		if _, err := controllerutil.CreateOrUpdate(ctx, s.client, &config, nil); err != nil {
+			s.log.Debugf("klusterlet addon config is %v", config)
+			s.log.Errorf("failed to create or update the klusterlet addon config %s", config.Name)
+			return err
+		}
+	}
 	return nil
 }
 

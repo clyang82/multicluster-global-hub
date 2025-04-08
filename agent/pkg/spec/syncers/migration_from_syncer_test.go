@@ -187,7 +187,7 @@ func TestMigrationSourceHubSyncer(t *testing.T) {
 			transportClient := &controller.TransportClient{}
 			transportClient.SetProducer(&producer)
 
-			managedClusterMigrationSyncer := NewManagedClusterMigrationFromSyncer(fakeClient, transportClient)
+			managedClusterMigrationSyncer := NewManagedClusterMigrationFromSyncer(fakeClient, transportClient, nil)
 
 			payload, err := json.Marshal(c.receivedMigrationEventBundle)
 			assert.Nil(t, err)
