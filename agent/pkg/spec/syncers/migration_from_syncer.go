@@ -309,6 +309,7 @@ func (s *managedClusterMigrationFromSyncer) sendSourceClusterMigrationResources(
 				mc.SetSelfLink("")
 				mc.SetResourceVersion("")
 				mc.SetGeneration(0)
+				mc.Spec.ManagedClusterClientConfigs = nil
 				mc.Status = clusterv1.ManagedClusterStatus{}
 				migrationResources.ManagedClusters = append(migrationResources.ManagedClusters, mc)
 				continue
