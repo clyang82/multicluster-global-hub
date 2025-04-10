@@ -101,6 +101,7 @@ func (m *ClusterMigrationController) initializing(ctx context.Context,
 
 	// ensure grant the proper permission to the KafkaUser for the gh-migration topic
 	if err := m.ensurePermission(ctx, sourceHubToClusters, mcm.Spec.To); err != nil {
+		log.Errorf("failed to grant permission to the kafkauser due to %v", err)
 		return false, err
 	}
 
@@ -171,7 +172,7 @@ func (m *ClusterMigrationController) ensurePermission(ctx context.Context,
 		for _, existingAcl := range kafkaUser.Spec.Authorization.Acls {
 			if utils.GenerateACLKey(existingAcl) == utils.GenerateACLKey(migrationACL) {
 				found = true
-				continue
+				break
 			}
 		}
 		if !found {
@@ -201,7 +202,7 @@ func (m *ClusterMigrationController) ensurePermission(ctx context.Context,
 	for _, existingAcl := range kafkaUser.Spec.Authorization.Acls {
 		if utils.GenerateACLKey(existingAcl) == utils.GenerateACLKey(migrationACL) {
 			found = true
-			continue
+			break
 		}
 	}
 	if !found {

@@ -185,3 +185,11 @@ rules:
   - watch
   - update
   - patch
+- apiGroups:
+  - kafka.strimzi.io
+  resources:
+  - kafkausers
+  verbs:
+  - get
+  - update
+  - watch
