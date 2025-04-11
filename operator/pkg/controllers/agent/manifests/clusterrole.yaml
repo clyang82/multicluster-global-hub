@@ -17,7 +17,6 @@ rules:
   - patch
   - update
   - watch
-  - deletecollection
 - apiGroups:
   - "apps.open-cluster-management.io"
   resources:
@@ -34,7 +33,6 @@ rules:
   - patch
   - update
   - watch
-  - deletecollection
 - apiGroups:
   - "policy.open-cluster-management.io"
   resources:
@@ -50,7 +48,6 @@ rules:
   - patch
   - update
   - watch
-  - deletecollection
 - apiGroups:
   - cluster.open-cluster-management.io
   resources:
@@ -65,7 +62,6 @@ rules:
   - patch
   - update
   - watch
-  - deletecollection
 - apiGroups:
   - cluster.open-cluster-management.io
   resources:
