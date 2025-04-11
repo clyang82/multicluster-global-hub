@@ -14,6 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/rand"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -171,16 +172,16 @@ func completeConfig(ctx context.Context, c client.Client, agentConfig *configs.A
 	if agentConfig.MetricsAddress == "" {
 		agentConfig.MetricsAddress = fmt.Sprintf("%s:%d", metricsHost, metricsPort)
 	}
-	// if deploy the agent as a event exporter, then disable the consumer features
+	// if deploy a standalone mode, the consumer group id is a random number
 	if agentConfig.Standalone {
-		agentConfig.TransportConfig.ConsumerGroupId = ""
-		agentConfig.SpecWorkPoolSize = 0
+		agentConfig.TransportConfig.ConsumerGroupId = rand.String(5)
 	} else {
 		agentConfig.TransportConfig.ConsumerGroupId = agentConfig.LeafHubName
-		if agentConfig.SpecWorkPoolSize < 1 || agentConfig.SpecWorkPoolSize > 100 {
-			return fmt.Errorf("flag consumer-worker-pool-size should be in the scope [1, 100]")
-		}
 	}
+	if agentConfig.SpecWorkPoolSize < 1 || agentConfig.SpecWorkPoolSize > 100 {
+		return fmt.Errorf("flag consumer-worker-pool-size should be in the scope [1, 100]")
+	}
+
 	configs.SetAgentConfig(agentConfig)
 	return nil
 }

@@ -544,6 +544,7 @@ func (k *strimziTransporter) GetConnCredential(clusterName string) (*transport.K
 	// topics
 	credential.StatusTopic = config.GetStatusTopic(clusterName)
 	credential.SpecTopic = config.GetSpecTopic()
+	credential.MigrationTopic = config.GetMigrationTopic()
 	credential.IsNewKafkaCluster = k.isNewKafkaCluster
 	if clusterName != constants.LocalClusterName {
 		return credential, nil

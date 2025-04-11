@@ -49,6 +49,7 @@ type managedClusterMigrationFromSyncer struct {
 	transportConfig   *transport.TransportInternalConfig
 	migrationProducer *producer.GenericProducer
 	bundleVersion     *eventversion.Version
+	sendResources     bool
 }
 
 func NewManagedClusterMigrationFromSyncer(client client.Client,
@@ -60,6 +61,7 @@ func NewManagedClusterMigrationFromSyncer(client client.Client,
 		transportClient: transportClient,
 		transportConfig: transportConfig,
 		bundleVersion:   eventversion.NewVersion(),
+		sendResources:   false,
 	}
 }
 
@@ -284,6 +286,11 @@ func (m *managedClusterMigrationFromSyncer) registering(
 // sendSourceClusterMigrationResources sends required and customized resources to migration topic
 func (s *managedClusterMigrationFromSyncer) sendSourceClusterMigrationResources(ctx context.Context,
 	managedClusters []string, toHub string) error {
+	// aovid duplicate sending
+	if s.sendResources {
+		return nil
+	}
+	// send the managed cluster and klusterletAddonConfig to the target cluster
 	migrationResources := &bundleevent.SourceClusterMigrationResources{
 		ManagedClusters:       []clusterv1.ManagedCluster{},
 		KlusterletAddonConfig: []addonv1.KlusterletAddonConfig{},
@@ -344,6 +351,8 @@ func (s *managedClusterMigrationFromSyncer) sendSourceClusterMigrationResources(
 			string(enum.MigrationResourcesType), toHub, configs.GetLeafHubName(), err)
 	}
 	s.bundleVersion.Next()
+	// set the sendResources to true to avoid duplicate sending
+	s.sendResources = true
 	return nil
 }
 

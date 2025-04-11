@@ -10,6 +10,7 @@ import (
 
 	addonv1 "github.com/stolostron/klusterlet-addon-controller/pkg/apis/agent/v1"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -150,6 +151,16 @@ func (s *managedClusterMigrationToSyncer) syncMigrationResources(ctx context.Con
 		return err
 	}
 	for _, mc := range migrationResources.ManagedClusters {
+		// create namespace for the managed cluster
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: mc.Name,
+			},
+		}
+		if _, err := controllerutil.CreateOrUpdate(ctx, s.client, ns, nil); err != nil {
+			s.log.Errorf("failed to create or update the namespace %s", ns.Name)
+			return err
+		}
 		if _, err := controllerutil.CreateOrUpdate(ctx, s.client, &mc, nil); err != nil {
 			s.log.Debugf("managed cluster is %v", mc)
 			s.log.Errorf("failed to create or update the managed cluster %s", mc.Name)
