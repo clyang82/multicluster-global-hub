@@ -52,6 +52,7 @@ func (cm *ConflationManager) Insert(evt *cloudevents.Event) {
 		cm.log.Infow("event type hasn't been registered", "type", evt.Type())
 		return
 	}
+	cm.log.Infow("inserting event to conflation unit", "type", evt.Type(), "source", evt.Source())
 	// metadata
 	conflationMetadata := metadata.NewThresholdMetadata(consumer.TransportID(), 3, evt)
 	if conflationMetadata == nil {

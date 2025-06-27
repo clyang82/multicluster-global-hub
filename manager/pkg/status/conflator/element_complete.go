@@ -65,7 +65,7 @@ func (e *completeElement) Predicate(eventVersion *version.Version) bool {
 		}
 		e.log.Info("resetting element processed version", "version", eventVersion)
 	}
-	e.log.V(2).Info("inserting event", "version", eventVersion)
+	e.log.Info("inserting event", "version", eventVersion, "lastProcessedVersion", e.lastProcessedVersion)
 
 	// version validation 1: the event.Version Vs lastProcessedVersion
 	if !eventVersion.NewerThan(e.lastProcessedVersion) {
@@ -83,7 +83,7 @@ func (e *completeElement) Predicate(eventVersion *version.Version) bool {
 func (e *completeElement) AddToReadyQueue(event *cloudevents.Event, metadata ConflationMetadata, cu *ConflationUnit) {
 	e.event = event
 	e.metadata = metadata
-
+	e.log.Info("inserting event", "event", event)
 	cu.addCUToReadyQueueIfNeeded()
 }
 
