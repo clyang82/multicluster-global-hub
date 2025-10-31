@@ -1,0 +1,16 @@
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: remote-clusters
+  namespace: remote-app
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: name
+          operator: NotIn
+          values: ["local-cluster"]
+        - key: feature.open-cluster-management.io/addon-multicluster-global-hub-controller
+          operator: In
+          values: ["available"]

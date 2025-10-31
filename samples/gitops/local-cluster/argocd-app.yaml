@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: local-app-gitops
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/stolostron/multicluster-global-hub.git
+    targetRevision: main
+    path: samples/gitops/local-cluster/app
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: local-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

@@ -1,0 +1,8 @@
+apiVersion: apps.open-cluster-management.io/v1
+kind: Channel
+metadata:
+  name: nginx-channel
+  namespace: remote-app
+spec:
+  type: Git
+  pathname: https://github.com/stolostron/application-samples.git
