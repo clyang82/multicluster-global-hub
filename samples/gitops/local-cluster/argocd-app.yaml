@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/stolostron/multicluster-global-hub.git
     targetRevision: main
-    path: samples/gitops/local-cluster/app
+    path: samples/gitops/local-cluster/manifests
   destination:
     server: https://kubernetes.default.svc
     namespace: local-app

@@ -1,0 +1,13 @@
+apiVersion: apps.open-cluster-management.io/v1
+kind: Subscription
+metadata:
+  name: nginx-local-sub
+  namespace: local-app
+  labels:
+    app: nginx-local
+spec:
+  channel: local-app/nginx-channel
+  placement:
+    placementRef:
+      name: local-clusters
+      kind: Placement
