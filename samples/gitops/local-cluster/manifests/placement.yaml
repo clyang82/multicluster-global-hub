@@ -4,8 +4,13 @@ metadata:
   name: local-clusters
   namespace: local-app
 spec:
+  clusterSets:
+  - global
   predicates:
   - requiredClusterSelector:
       labelSelector:
-        matchLabels:
-          name: "local-cluster"
+        matchExpressions:
+          - key: local-cluster
+            operator: In
+            values:
+              - "true"

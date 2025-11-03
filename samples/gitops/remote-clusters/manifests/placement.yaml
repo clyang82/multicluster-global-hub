@@ -8,9 +8,9 @@ spec:
   - requiredClusterSelector:
       labelSelector:
         matchExpressions:
-        - key: name
+        - key: local-cluster
           operator: NotIn
-          values: ["local-cluster"]
+          values: ["true"]
         - key: feature.open-cluster-management.io/addon-multicluster-global-hub-controller
           operator: In
           values: ["available"]

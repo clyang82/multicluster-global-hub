@@ -16,6 +16,14 @@ This sample shows how to use OpenShift GitOps (ArgoCD) to deploy applications th
 
 Both use cases use the same ACM pattern (Channel/Subscription/Placement) with different placement targeting.
 
+## Prerequisites
+
+OpenShift GitOps service account needs permissions to create ACM resources:
+
+```bash
+oc apply -f rbac/rbac.yaml
+```
+
 ## Quick Setup
 
 ### For Local Cluster Deployment:
