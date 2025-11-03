@@ -4,6 +4,8 @@ metadata:
   name: remote-clusters
   namespace: remote-app
 spec:
+  clusterSets:
+  - global
   predicates:
   - requiredClusterSelector:
       labelSelector:
